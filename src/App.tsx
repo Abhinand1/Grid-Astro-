@@ -1,0 +1,2123 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, FormEvent, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Heart, Calendar, Clock, MapPin, User, Sparkles, Menu, ArrowRight, Star, ChevronDown, CheckCircle, XCircle, ShieldAlert, Scale, Activity, ArrowLeft, Loader2, Grid3X3, Info, X } from 'lucide-react';
+import { getCurrentNakshatra } from './utils/astronomy';
+import { NAKSHATRAS } from './utils/astroData';
+import { calculatePorutham, MatchReport, PoruthamResult } from './utils/porutham';
+import { calculateIndepth, IndepthReport } from './utils/indepth';
+import { RasiChart } from './components/RasiChart';
+import { DOSHAM_EXPLANATIONS, DoshamExplanation } from './constants/doshamExplanations';
+import { PORUTHAM_EXPLANATIONS, PoruthamExplanation } from './constants/poruthamExplanations';
+import { calculateDasaTimeline, DasaPeriod } from './utils/dasa';
+import { findMuhurthams, MuhurthamDate } from './utils/muhurtham';
+import { DasaTimeline } from './components/DasaTimeline';
+import { MuhurthamFinder } from './components/MuhurthamFinder';
+import { DailyHoroscopeModal } from './components/DailyHoroscopeModal';
+import { PoruthamDetailModal } from './components/PoruthamDetailModal';
+import { CustomSelect } from './components/CustomSelect';
+import { CustomDatePicker } from './components/CustomDatePicker';
+import { CustomTimePicker } from './components/CustomTimePicker';
+import { haptic } from './utils/haptics';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
+
+const ZODIAC_SIGNS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+
+type ViewState = 'home' | 'form' | 'basic' | 'chart' | 'muhurtham' | 'analysis' | 'janam-kundli' | 'about' | 'privacy' | 'contact' | 'terms' | 'help';
+
+export default function App() {
+  const [boyDetails, setBoyDetails] = useState({
+    name: 'അർജുൻ (Arjun)',
+    dob: '1994-05-20',
+    time: '14:30',
+    place: 'Palakkad',
+    starId: 25 // Poororuttathi
+  });
+
+  const [girlDetails, setGirlDetails] = useState({
+    name: 'ശ്രേയ (Shreya)',
+    dob: '1997-11-05',
+    time: '09:45',
+    place: 'Thrissur',
+    starId: 4 // Rohini
+  });
+
+  const [matchResult, setMatchResult] = useState<MatchReport | null>(null);
+  const [indepthResult, setIndepthResult] = useState<IndepthReport | null>(null);
+  const [view, setView] = useState<ViewState>('home');
+  const [isLoadingIndepth, setIsLoadingIndepth] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedExplanation, setSelectedExplanation] = useState<DoshamExplanation | PoruthamExplanation | null>(null);
+  const [boyDasa, setBoyDasa] = useState<DasaPeriod[]>([]);
+  const [girlDasa, setGirlDasa] = useState<DasaPeriod[]>([]);
+  const [muhurthams, setMuhurthams] = useState<MuhurthamDate[]>([]);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isDailyHoroscopeOpen, setIsDailyHoroscopeOpen] = useState(false);
+  const [isMuhurthamCalendarOpen, setIsMuhurthamCalendarOpen] = useState(false);
+  const [selectedPorutham, setSelectedPorutham] = useState<PoruthamResult | null>(null);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Fix: Every page should start from starting top of the page
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [view]);
+
+  useEffect(() => {
+    if (boyDetails.starId && girlDetails.starId) {
+      setBoyDasa(calculateDasaTimeline(boyDetails.starId, boyDetails.dob));
+      setGirlDasa(calculateDasaTimeline(girlDetails.starId, girlDetails.dob));
+      setMuhurthams(findMuhurthams(girlDetails.starId, boyDetails.starId));
+    }
+  }, [boyDetails.starId, boyDetails.dob, girlDetails.starId, girlDetails.dob]);
+
+  const getPoruthamIcon = (name: string) => {
+    switch (name) {
+      case 'Dina': return 'schedule';
+      case 'Gana': return 'groups';
+      case 'Mahendra': return 'shield';
+      case 'Stree Deergha': return 'straighten';
+      case 'Yoni': return 'pets';
+      case 'Rasi': return 'grid_view';
+      case 'Rasyadhipathi': return 'stars';
+      case 'Vasya': return 'favorite';
+      case 'Rajju': return 'link';
+      case 'Vedha': return 'block';
+      default: return 'star';
+    }
+  };
+
+  const currentNakshatra = getCurrentNakshatra();
+
+  const getCurrentTithi = () => {
+    const now = new Date();
+    const day = now.getDate();
+    const tithis = ["Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima", "Amavasya"];
+    return tithis[day % 16];
+  };
+
+  const getCurrentAlignment = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.getDate();
+    
+    const sunSigns = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+    const moonSigns = ["Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer"];
+    const risingSigns = ["Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra"];
+    
+    const sunIdx = (day + Math.floor(now.getMonth() * 1.5)) % 12;
+    const moonIdx = (day * 2 + hour) % 12;
+    const risingIdx = (hour + Math.floor(day / 2)) % 12;
+    
+    const score = 75 + (day % 15);
+    const status = score > 85 ? "Excellent" : score > 80 ? "Great" : "Good";
+    
+    return {
+      sun: sunSigns[sunIdx],
+      moon: moonSigns[moonIdx],
+      rising: risingSigns[risingIdx],
+      score,
+      status
+    };
+  };
+
+  const currentAlignment = getCurrentAlignment();
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (boyDetails.starId === 0 || girlDetails.starId === 0) {
+      alert('ദയവായി നക്ഷത്രം തിരഞ്ഞെടുക്കുക (Please select Nakshatra)');
+      return;
+    }
+
+    const result = calculatePorutham(girlDetails.starId, boyDetails.starId);
+    setMatchResult(result);
+    setView('basic');
+  };
+
+  const handleIndepthCheck = async () => {
+    setIsLoadingIndepth(true);
+    try {
+      const result = await calculateIndepth(boyDetails, girlDetails);
+      setIndepthResult(result);
+      
+      // Calculate Dasa and Muhurthams
+      setBoyDasa(calculateDasaTimeline(boyDetails.starId, boyDetails.dob));
+      setGirlDasa(calculateDasaTimeline(girlDetails.starId, girlDetails.dob));
+      setMuhurthams(findMuhurthams(girlDetails.starId, boyDetails.starId));
+      
+      setView('analysis');
+    } catch (error) {
+      console.error(error);
+      alert("വിശദമായ പരിശോധന പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക. (Failed to calculate in-depth report. Please try again.)");
+    } finally {
+      setIsLoadingIndepth(false);
+    }
+  };
+
+  const downloadPDF = async () => {
+    const element = document.getElementById('pdf-report-template');
+    if (!element) return;
+
+    setIsGeneratingPdf(true);
+    try {
+      // Temporarily make the element visible for capture
+      element.style.display = 'block';
+      element.style.position = 'fixed';
+      element.style.top = '0';
+      element.style.left = '0';
+      element.style.zIndex = '9999';
+      element.style.opacity = '1';
+
+      // Small delay to ensure rendering
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Use html-to-image for better quality and reliability with modern CSS (oklch)
+      const dataUrl = await toPng(element, {
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        style: {
+          opacity: '1',
+          transform: 'none',
+        }
+      });
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgWidth = pdfWidth;
+      const imgHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+      
+      pdf.save(`Grid_Astro_Report_${boyDetails.name || 'Boy'}_${girlDetails.name || 'Girl'}.pdf`);
+    } catch (error) {
+      console.error('PDF Error:', error);
+      alert('PDF നിർമ്മാണത്തിൽ തകരാർ സംഭവിച്ചു. (Failed to generate PDF.)');
+    } finally {
+      // Always hide it back
+      if (element) {
+        element.style.display = 'none';
+        element.style.position = 'fixed';
+        element.style.left = '-9999px';
+      }
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const getBoyStar = () => NAKSHATRAS.find(s => s.id === boyDetails.starId);
+  const getGirlStar = () => NAKSHATRAS.find(s => s.id === girlDetails.starId);
+
+  // Mock planetary positions for visual completeness
+  const mockPlanets = [
+    { name: "സൂര്യൻ", rasi: "Mesha" },
+    { name: "വ്യാഴം", rasi: "Simha" },
+    { name: "ശനി", rasi: "Kumbha" },
+    { name: "ചൊവ്വ", rasi: "Vrischika" }
+  ];
+
+  return (
+    <div className={`min-h-[100dvh] bg-surface font-sans text-on-surface relative flex flex-col overflow-x-hidden`}>
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden flex items-center justify-center opacity-[0.4]">
+        <svg viewBox="0 0 800 800" className="w-[200%] h-[200%] md:w-[150%] md:h-[150%] animate-[spin_180s_linear_infinite] text-primary/30" fill="currentColor" style={{ filter: 'drop-shadow(0 0 20px rgba(144, 77, 0, 0.15))' }}>
+          <path d="M400 50 A350 350 0 1 1 399.9 50 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="10 10"/>
+          <path d="M400 100 A300 300 0 1 1 399.9 100 Z" fill="none" stroke="currentColor" strokeWidth="1"/>
+          <path d="M400 150 A250 250 0 1 1 399.9 150 Z" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+          <g transform="translate(400, 400)">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <g key={i} transform={`rotate(${i * 30}) translate(0, -325)`}>
+                <text textAnchor="middle" dominantBaseline="middle" fontSize="32" transform={`rotate(${-i * 30})`}>
+                  {ZODIAC_SIGNS[i]}
+                </text>
+              </g>
+            ))}
+            {Array.from({ length: 12 }).map((_, i) => (
+              <g key={`inner-${i}`} transform={`rotate(${i * 30 + 15}) translate(0, -275)`}>
+                <circle r="4" fill="currentColor" />
+              </g>
+            ))}
+            {Array.from({ length: 27 }).map((_, i) => (
+              <g key={`nakshatra-${i}`} transform={`rotate(${i * (360/27)}) translate(0, -225)`}>
+                <text textAnchor="middle" dominantBaseline="middle" fontSize="12" transform={`rotate(${-i * (360/27)})`}>
+                  ★
+                </text>
+              </g>
+            ))}
+          </g>
+        </svg>
+      </div>
+      
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            key="splash"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-white overflow-hidden"
+          >
+            {/* Background Spinning Zodiacs */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+                className="relative w-[800px] h-[800px] flex items-center justify-center"
+              >
+                {ZODIAC_SIGNS.map((sign, i) => (
+                  <div
+                    key={`bg-sign-${i}`}
+                    className="absolute text-6xl font-serif"
+                    style={{
+                      transform: `rotate(${i * 30}deg) translateY(-350px)`,
+                    }}
+                  >
+                    {sign}
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Celestial Rings Animation */}
+              <div className="relative w-48 h-48 mb-12">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 border-[0.5px] border-primary/20 rounded-full"
+                />
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-4 border-[0.5px] border-primary/10 rounded-full border-dashed"
+                />
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-8 border-[0.5px] border-primary/5 rounded-full"
+                />
+                
+                {/* Inner Spinning Zodiacs */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  {ZODIAC_SIGNS.map((sign, i) => (
+                    <div
+                      key={`inner-sign-${i}`}
+                      className="absolute text-xs font-serif text-primary/40"
+                      style={{
+                        transform: `rotate(${i * 30}deg) translateY(-85px)`,
+                      }}
+                    >
+                      {sign}
+                    </div>
+                  ))}
+                </motion.div>
+
+                {/* Center Pulsing Star */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.2, 1],
+                      opacity: [0.3, 0.6, 0.3]
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="w-2 h-2 bg-primary rounded-full blur-[2px]"
+                  />
+                </div>
+              </div>
+
+              {/* Logo Animation */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.8 }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="text-3xl md:text-4xl tracking-tight text-slate-900 flex items-center justify-center gap-1 [&_span:first-child]:font-bold [&_span:last-child]:font-light">
+                  <span>Grid</span><span>Astro</span>
+                </div>
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: 120 }}
+                  transition={{ delay: 1, duration: 1 }}
+                  className="h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent"
+                />
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.5 }}
+                  transition={{ delay: 1.5, duration: 0.8 }}
+                  className="text-[10px] uppercase tracking-[0.3em] font-bold text-primary"
+                >
+                  Celestial Intelligence
+                </motion.p>
+              </motion.div>
+            </div>
+
+            {/* Loading Progress Bar */}
+            <div className="absolute bottom-16 w-48 h-[2px] bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 2.5, ease: "easeInOut" }}
+                className="h-full bg-primary"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Background texture removed - using the one above */}
+      
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* TopAppBar */}
+        <header className="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100/50 shadow-sm flex justify-between items-center px-6 h-14 shrink-0 font-['Plus_Jakarta_Sans'] font-medium">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => {
+              haptic.light();
+              if (view === 'home') {
+                setIsMenuOpen(true);
+                return;
+              }
+              if (view === 'form') setView('home');
+              else if (view === 'basic') setView('form');
+              else if (view === 'analysis') setView('basic');
+              else if (view === 'chart') setView('basic');
+              else if (view === 'muhurtham') setView('analysis');
+              else setView('home');
+            }}
+            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
+          >
+            <span className="material-symbols-outlined text-slate-700 text-[22px]">
+              {view === 'home' ? 'menu' : 'arrow_back'}
+            </span>
+          </button>
+          <div 
+            onClick={() => setView('home')}
+            className="text-lg tracking-tight text-slate-900 flex items-center justify-center gap-0.5 [&_span:first-child]:font-bold [&_span:last-child]:font-light cursor-pointer"
+          >
+            <span>Grid</span><span>Astro</span>
+          </div>
+        </div>
+        <div className="flex items-center">
+          <div className="flex flex-col items-end justify-center leading-none">
+            <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-primary/70 mb-0.5">Nakshatra</span>
+            <span className="text-[10px] font-black text-slate-900 leading-none">{currentNakshatra.name}</span>
+            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 px-6 max-w-xl mx-auto w-full overflow-x-hidden pt-8 pb-24">
+        <AnimatePresence mode="wait">
+          {view === 'home' && (
+            <motion.div
+              key="home"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Hero Section */}
+              <section className="mb-12">
+                <h1 className="text-4xl tracking-tight mb-4 leading-[1.1]">
+                  <span className="block font-extrabold text-on-surface">Your Destiny,</span>
+                  <span className="block font-light text-primary">Written in the Stars.</span>
+                </h1>
+                <p className="text-on-surface-variant text-lg leading-relaxed mb-8 opacity-80">
+                  Modern precision meets Keralite tradition. Chart your path with celestial clarity.
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => { haptic.light(); setView('form'); }}
+                    className="bg-celestial-gradient text-white font-semibold py-4 px-8 rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+                  >
+                    Check Compatibility
+                  </button>
+                  <button 
+                    onClick={() => { haptic.light(); setView('janam-kundli'); }}
+                    className="bg-white/60 backdrop-blur-md border border-white/30 text-primary font-semibold py-4 px-8 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)] active:scale-95 transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+                  >
+                    Explore Janam Kundli
+                  </button>
+                </div>
+              </section>
+
+              {/* Current Alignment */}
+              <section className="mb-12">
+                <div className="bg-white/60 backdrop-blur-2xl rounded-[32px] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.03)] border border-white/40 relative overflow-hidden">
+                  <div className="absolute -right-12 -top-12 opacity-5 pointer-events-none">
+                    <span className="material-symbols-outlined text-[160px]" style={{ fontVariationSettings: "'wght' 100" }}>brightness_high</span>
+                  </div>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-primary/60 mb-6">Current Alignment</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <span className="material-symbols-outlined text-primary mb-2">wb_sunny</span>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Sun</p>
+                      <p className="font-bold text-on-surface">{currentAlignment.sun}</p>
+                    </div>
+                    <div className="text-center border-x border-slate-100">
+                      <span className="material-symbols-outlined text-primary mb-2">dark_mode</span>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Moon</p>
+                      <p className="font-bold text-on-surface">{currentAlignment.moon}</p>
+                    </div>
+                    <div className="text-center">
+                      <span className="material-symbols-outlined text-primary mb-2">north_east</span>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Rising</p>
+                      <p className="font-bold text-on-surface">{currentAlignment.rising}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Divine Alignment Meter */}
+              <section className="mb-12">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  Divine Alignment
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                </h2>
+                <div className="bg-surface-container-low rounded-[32px] p-8 text-center relative">
+                  <div className="relative inline-block">
+                    <svg className="w-48 h-48 -rotate-90">
+                      <circle className="text-surface-variant/30" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" strokeWidth="12"></circle>
+                      <circle 
+                        cx="96" 
+                        cy="96" 
+                        fill="transparent" 
+                        r="88" 
+                        stroke="url(#gauge-gradient)" 
+                        strokeDasharray="552.92" 
+                        strokeDashoffset={552.92 * (1 - currentAlignment.score / 100)} 
+                        strokeLinecap="round" 
+                        strokeWidth="12"
+                        className="transition-all duration-1000 ease-out"
+                      ></circle>
+                      <defs>
+                        <linearGradient id="gauge-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                          <stop offset="0%" style={{ stopColor: '#F2994A' }}></stop>
+                          <stop offset="100%" style={{ stopColor: '#904D00' }}></stop>
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-5xl font-extrabold text-on-surface tracking-tighter">{currentAlignment.score}%</span>
+                      <span className="text-xs font-bold text-primary tracking-widest uppercase">{currentAlignment.status}</span>
+                    </div>
+                  </div>
+                  <p className="mt-6 text-on-surface-variant/70 text-sm italic leading-relaxed">
+                    "A rare celestial harmony favored by Jupiter's transit through your 7th house."
+                  </p>
+                </div>
+              </section>
+
+              {/* Vedic Insights */}
+              <section className="mb-12">
+                <h2 className="text-2xl font-bold mb-6">Vedic Insights</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div 
+                    onClick={() => { haptic.light(); setIsDailyHoroscopeOpen(true); }}
+                    className="col-span-2 bg-white rounded-[24px] p-6 shadow-sm border-b-4 border-primary/10 relative overflow-hidden cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+                  >
+                    <div className="relative z-10">
+                      <div className="flex justify-between items-start mb-12">
+                        <span className="material-symbols-outlined text-3xl text-primary">auto_awesome</span>
+                        <span className="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full font-bold uppercase">Live Reading</span>
+                      </div>
+                      <h4 className="text-xl font-bold mb-1">Daily Horoscope</h4>
+                      <p className="text-sm text-on-surface-variant">Tap to get your personalized daily insight.</p>
+                    </div>
+                    <div className="absolute bottom-[-20%] right-[-10%] opacity-10 pointer-events-none">
+                      <img className="w-40 rotate-12" alt="Vedic diagram" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcPmYVMPJpDDrtD3NBp4EEQROZjQ0BdoadWWixtufK5EsTgGyXWE8HCiK3ZhlAbtP7hMiXpFNA-qRJYYK8Hpilj_txtInCjbzMeCoFytLlwwvLDODUsku5tZMGP4c1oOeWp8hWZpHZFlYLLl1nXIVk1_K7-nrbLkqiLWq72bSaGwsWVqiA2yZklUphpdz2IOrv9RELxNXLXbtcJkCAqeiTbHoNO2jDtSHkwdrHz3eca3vxZmssh-JRR_SR4WtiEjvmze637Y_vGw" referrerPolicy="no-referrer" />
+                    </div>
+                  </div>
+                  <div className="bg-surface-container-low rounded-[24px] p-5">
+                    <span className="material-symbols-outlined text-primary mb-4">history_edu</span>
+                    <h4 className="font-bold text-sm mb-1">Keralite Tradition</h4>
+                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">Ashtamangala secrets.</p>
+                  </div>
+                  <div className="bg-surface-container-low rounded-[24px] p-5">
+                    <span className="material-symbols-outlined text-primary mb-4">timeline</span>
+                    <h4 className="font-bold text-sm mb-1">Dasa Timeline</h4>
+                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">Current: Venus Mahadasa.</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Testimonial */}
+              <section className="mb-12">
+                <div className="bg-primary-container/20 rounded-[32px] p-8 relative">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white">
+                      <img className="w-full h-full object-cover" alt="Ananya Sharma" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf06mdPnWG1ryJp5Qe8W6kXfEVEJ-PuW2rVE-XxqeErUvRjfLJ2gwllt3ndddG3ecK-N4dOacoq4tnAV2iCko0MQxD-fGADfkVMs2RNUZWR8uLXLo9sV9qvqn6M7NgIReDw708Rh8DNkvkyOcqlmGQBT3kAgDh3NhToSsgjFuiZkNP0m1IOJyupAyQLSTIGgqF2rRuOP5tML2SpE9J8vrR5ipIooyQL7Ull6w0YPsRp2UxQz2iqA5koLSKwk3NVJmU-mEWwapfAg" referrerPolicy="no-referrer" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm">Ananya Sharma</h5>
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-wider">Entrepreneur</p>
+                    </div>
+                  </div>
+                  <p className="text-on-surface-variant italic leading-relaxed relative z-10">
+                    "The precision of the Dasa predictions was life-changing. Grid Astro manages to make ancient wisdom feel so accessible and modern."
+                  </p>
+                  <div className="absolute bottom-6 right-8 text-primary opacity-20">
+                    <span className="material-symbols-outlined text-6xl">format_quote</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Footer */}
+              <footer className="bg-white px-6 pt-12 pb-32 border-t border-slate-50 -mx-5">
+                <div className="flex items-center gap-0.5 text-2xl tracking-tight text-slate-900 mb-8">
+                  <span className="font-bold">Grid</span><span className="font-light">Astro</span>
+                </div>
+                <div className="grid grid-cols-2 gap-8 mb-12">
+                  <div>
+                    <h6 className="text-xs font-bold uppercase text-slate-400 tracking-widest mb-4">Universe</h6>
+                    <ul className="space-y-3 text-sm font-medium text-slate-600">
+                      <li><button onClick={() => setView('home')} className="hover:text-primary transition-colors">Horoscope</button></li>
+                      <li><button onClick={() => setView('form')} className="hover:text-primary transition-colors">Matching</button></li>
+                      <li><button onClick={() => setView('janam-kundli')} className="hover:text-primary transition-colors">Kundli</button></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h6 className="text-xs font-bold uppercase text-slate-400 tracking-widest mb-4">Company</h6>
+                    <ul className="space-y-3 text-sm font-medium text-slate-600">
+                      <li><button onClick={() => setView('about')} className="hover:text-primary transition-colors">About Us</button></li>
+                      <li><button onClick={() => setView('privacy')} className="hover:text-primary transition-colors">Privacy</button></li>
+                      <li><button onClick={() => setView('contact')} className="hover:text-primary transition-colors">Contact</button></li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="flex gap-6 mb-8 text-slate-400">
+                  <span className="material-symbols-outlined">public</span>
+                  <span className="material-symbols-outlined">camera</span>
+                  <span className="material-symbols-outlined">alternate_email</span>
+                </div>
+                <p className="text-xs text-slate-400">© 2026 Grid Astro. All rights reserved.</p>
+              </footer>
+            </motion.div>
+          )}
+
+          {view === 'form' && (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Headline Section */}
+              <section className="mb-8">
+                <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-2">Check Compatibility</h1>
+                <p className="text-on-surface-variant font-medium leading-relaxed">Discover your celestial alignment through the precision of Keralite Vedic astrology.</p>
+              </section>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Partner I Details */}
+                <div className="bg-surface-container-lowest/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white/40">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+                      <span className="material-symbols-outlined">person</span>
+                    </div>
+                    <h2 className="text-lg font-bold">Partner I Details</h2>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Full Name</label>
+                      <input 
+                        className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
+                        placeholder="Enter name" 
+                        type="text"
+                        value={boyDetails.name}
+                        onChange={(e) => setBoyDetails({ ...boyDetails, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5 group">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">Nakshatra (Star)</label>
+                      <div className="relative">
+                        <CustomSelect
+                          value={boyDetails.starId || ''}
+                          onChange={(val) => setBoyDetails({ ...boyDetails, starId: Number(val) })}
+                          options={NAKSHATRAS.map(star => ({ value: star.id, label: `${star.malayalamName} (${star.name})` }))}
+                          placeholder="Select Star"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Date of Birth</label>
+                        <CustomDatePicker
+                          value={boyDetails.dob}
+                          onChange={(date) => setBoyDetails({ ...boyDetails, dob: date })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Time of Birth</label>
+                        <CustomTimePicker
+                          value={boyDetails.time}
+                          onChange={(time) => setBoyDetails({ ...boyDetails, time })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Place of Birth</label>
+                      <div className="relative">
+                        <input 
+                          className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 pl-11 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
+                          placeholder="Search city..." 
+                          type="text"
+                          value={boyDetails.place}
+                          onChange={(e) => setBoyDetails({ ...boyDetails, place: e.target.value })}
+                          required
+                        />
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">location_on</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visual Divider */}
+                <div className="flex justify-center items-center py-2">
+                  <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-outline-variant/30 to-transparent"></div>
+                  <div className="mx-4 p-2 rounded-full bg-surface-container-high text-primary/60">
+                    <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
+                  </div>
+                  <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-outline-variant/30 to-transparent"></div>
+                </div>
+
+                {/* Partner II Details */}
+                <div className="bg-surface-container-lowest/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white/40">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary">
+                      <span className="material-symbols-outlined">person_2</span>
+                    </div>
+                    <h2 className="text-lg font-bold">Partner II Details</h2>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Full Name</label>
+                      <input 
+                        className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
+                        placeholder="Enter name" 
+                        type="text"
+                        value={girlDetails.name}
+                        onChange={(e) => setGirlDetails({ ...girlDetails, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5 group">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">Nakshatra (Star)</label>
+                      <div className="relative">
+                        <CustomSelect
+                          value={girlDetails.starId || ''}
+                          onChange={(val) => setGirlDetails({ ...girlDetails, starId: Number(val) })}
+                          options={NAKSHATRAS.map(star => ({ value: star.id, label: `${star.malayalamName} (${star.name})` }))}
+                          placeholder="Select Star"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Date of Birth</label>
+                        <CustomDatePicker
+                          value={girlDetails.dob}
+                          onChange={(date) => setGirlDetails({ ...girlDetails, dob: date })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Time of Birth</label>
+                        <CustomTimePicker
+                          value={girlDetails.time}
+                          onChange={(time) => setGirlDetails({ ...girlDetails, time })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Place of Birth</label>
+                      <div className="relative">
+                        <input 
+                          className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 pl-11 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
+                          placeholder="Search city..." 
+                          type="text"
+                          value={girlDetails.place}
+                          onChange={(e) => setGirlDetails({ ...girlDetails, place: e.target.value })}
+                          required
+                        />
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">location_on</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Calculate Button */}
+                <div className="pt-4">
+                  <button 
+                    className="w-full bg-gradient-to-r from-primary to-primary-container text-white h-16 rounded-full font-bold text-lg shadow-xl shadow-primary-container/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2" 
+                    type="submit"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                    Calculate Alignment
+                  </button>
+                </div>
+
+                {/* Trust Badge */}
+                <div className="flex items-center justify-center gap-2 py-4 text-on-surface-variant/70">
+                  <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-widest">Data calculated using Swiss Ephemeris precision.</span>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          {view === 'basic' && (
+            <motion.div 
+              key="basic"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="relative min-h-screen pb-24"
+              id="report-content-basic"
+            >
+              <section className="text-center space-y-6">
+                <div className="space-y-1">
+                  <p className="text-primary font-bold tracking-widest text-[10px] uppercase">Celestial Reading</p>
+                  <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">A Harmonious Match.</h1>
+                </div>
+
+                {/* Main Score Gauge */}
+                <div className="relative w-64 h-64 mx-auto flex items-center justify-center">
+                  {/* Astrological background wheel graphic */}
+                  <div className="absolute inset-0 opacity-10 animate-[spin_20s_linear_infinite]">
+                    <svg className="w-full h-full text-primary" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" fill="none" r="45" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5"></circle>
+                      <path d="M50 5 L50 95 M5 50 L95 50 M18 18 L82 82 M18 82 L82 18" stroke="currentColor" strokeWidth="0.2"></path>
+                    </svg>
+                  </div>
+
+                  {/* Glassmorphic Gauge */}
+                  <div className="relative z-10 w-52 h-52 rounded-full bg-white/40 backdrop-blur-2xl shadow-[0_24px_48px_rgba(144,77,0,0.08)] flex flex-col items-center justify-center border border-white/40">
+                    <div className="absolute inset-0 rounded-full border-[6px] border-surface-container-high"></div>
+                    {/* Saffron Progress Track */}
+                    <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 208 208">
+                      <circle 
+                        cx="104" 
+                        cy="104" 
+                        fill="none" 
+                        r="98" 
+                        stroke="url(#saffron-gradient)" 
+                        strokeDasharray="615.44" 
+                        strokeDashoffset={615.44 - (615.44 * (matchResult?.totalScore || 0)) / 10} 
+                        strokeLinecap="round" 
+                        strokeWidth="8"
+                      ></circle>
+                      <defs>
+                        <linearGradient id="saffron-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                          <stop offset="0%" stopColor="#904D00"></stop>
+                          <stop offset="100%" stopColor="#F2994A"></stop>
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <span className="text-5xl font-extrabold text-on-surface tracking-tighter">
+                      {Math.round((matchResult?.totalScore || 0) * 10)}%
+                    </span>
+                    <span className="text-sm font-semibold text-primary opacity-80">Match Score</span>
+                  </div>
+                </div>
+
+                <p className="text-on-surface-variant leading-relaxed text-sm px-4">
+                  The celestial alignments of your birth charts show an extraordinary resonance. Your emotional wavelengths and karmic paths are deeply intertwined, promising a journey of mutual growth and spiritual depth.
+                </p>
+              </section>
+
+              {/* Detailed Breakdown */}
+              <section className="space-y-4 mt-8">
+                <h2 className="text-xl font-bold px-1">Compatibility Poruthams</h2>
+                <div className="grid gap-4">
+                  {matchResult && matchResult.results.map((res, idx) => (
+                    <div 
+                      key={`result-${idx}`} 
+                      onClick={() => { haptic.light(); setSelectedPorutham(res); }}
+                      className="bg-white/60 backdrop-blur-xl p-4 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-white/40 flex items-start gap-4 cursor-pointer hover:bg-white/80 transition-colors"
+                    >
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                        res.status === 'Uthamam' ? 'bg-primary-container/20' : 
+                        res.status === 'Adhamam' ? 'bg-error-container/20' : 'bg-orange-100/40'
+                      }`}>
+                        <span className="material-symbols-outlined text-primary">{getPoruthamIcon(res.name)}</span>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex justify-between items-start gap-2">
+                          <h3 className="font-bold text-base">{res.malayalamName} Porutham</h3>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                            res.status === 'Uthamam' ? 'bg-green-100 text-green-700' : 
+                            res.status === 'Adhamam' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {res.status === 'Uthamam' ? 'Uthamam' : res.status === 'Adhamam' ? 'Adhamam' : 'Madhyamam'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2">
+                          {PORUTHAM_EXPLANATIONS[res.name]?.description || 'Indicates compatibility in family growth and lineage prosperity.'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Expert Note */}
+              <section className="bg-[#F2994A]/10 p-6 rounded-[32px] relative overflow-hidden mt-8">
+                <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-3xl"></div>
+                <div className="relative z-10 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
+                      <img alt="Astrologer" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN8ZYihF0NhKwcnoaBP2BJd4AsFzX1KVkTu_9w-bDmxATGAh7KXZy87ds1H-yC1NWJqOOhw72mgvIIAcs2jlJE_zILLlTlArytsx2UkHUFQBQHnyLEmCBYjrcvMh6HO50ky90H0YO-fHkff13ul9yd0YwzmfregCAotgzCEVeqYCqssFKglfNmpV17ih6TsZE1GqFCn5zLVvzmYGj_PD0y5jyMqJXnWfll3vORTyty1y-CEZ3KEFGjBjMmJsNJOleQszSA9ExjPA" referrerPolicy="no-referrer" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-primary">Expert Insight</p>
+                      <p className="text-[10px] text-on-surface-variant">Acharya Raghavan</p>
+                    </div>
+                  </div>
+                  <blockquote className="text-sm italic text-on-surface font-medium leading-relaxed">
+                    "{matchResult?.overallRecommendation}"
+                  </blockquote>
+                </div>
+              </section>
+
+              {/* Actions */}
+              <section className="space-y-4 pb-12 mt-8">
+                <button 
+                  onClick={() => { haptic.light(); downloadPDF(); }}
+                  disabled={isGeneratingPdf}
+                  className="w-full h-14 bg-gradient-to-r from-primary to-primary-container text-white rounded-full font-bold shadow-[0_12px_24px_rgba(144,77,0,0.2)] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
+                >
+                  {isGeneratingPdf ? <Loader2 size={18} className="animate-spin" /> : <span className="material-symbols-outlined">download</span>}
+                  {isGeneratingPdf ? 'Saving...' : 'Download Full Analysis (PDF)'}
+                </button>
+                <button 
+                  onClick={() => { haptic.light(); handleIndepthCheck(); }}
+                  disabled={isLoadingIndepth}
+                  className="w-full h-14 bg-white/60 backdrop-blur-xl border border-primary/20 text-primary rounded-full font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
+                >
+                  {isLoadingIndepth ? <Loader2 size={18} className="animate-spin" /> : <span className="material-symbols-outlined">auto_awesome</span>}
+                  {isLoadingIndepth ? 'Analyzing...' : 'In-depth Analysis'}
+                </button>
+              </section>
+            </motion.div>
+          )}
+
+
+
+          {view === 'muhurtham' && (
+            <motion.div 
+              key="muhurtham"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="relative min-h-screen pb-24"
+            >
+              <div className="relative z-10 space-y-8">
+                {/* Hero Headline Section */}
+                <section className="mt-4">
+                  <h1 className="text-3xl font-extrabold text-on-surface tracking-tight leading-tight">
+                    Auspicious Alignment <br/>
+                    <span className="text-primary font-light">&amp; Dasa Timeline</span>
+                  </h1>
+                  <p className="mt-2 text-on-surface-variant text-sm font-medium opacity-80">Navigate your celestial journey through the lens of Keralite precision.</p>
+                </section>
+
+                {/* Muhurtham Strength Gauge */}
+                <section className="glass-card rounded-[32px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                  <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary-container/10 rounded-full blur-3xl"></div>
+                  <div className="flex justify-between items-end mb-6">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Current Phase</span>
+                      <h2 className="text-xl font-bold">Muhurtham Strength</h2>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-3xl font-extrabold text-primary">84%</span>
+                    </div>
+                  </div>
+                  <div className="relative h-3 w-full bg-surface-variant rounded-full overflow-hidden">
+                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#904D00] to-[#F2994A] rounded-full" style={{ width: '84%' }}></div>
+                  </div>
+                  <div className="mt-4 flex justify-between text-[11px] font-semibold text-on-surface-variant">
+                    <span>90-Day Forecast</span>
+                    <span className="text-primary">High Cosmic Alignment</span>
+                  </div>
+                </section>
+
+                {/* Growth Synergy Card */}
+                <section className="bg-gradient-to-br from-primary to-secondary-container rounded-[32px] p-6 text-white shadow-xl shadow-primary/20">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                      <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold">Growth Synergy</h3>
+                      <p className="text-sm text-white/90 leading-relaxed mt-1 font-medium">
+                        Jupiter's current transit through your 10th house favors professional expansion. A perfect time for career pivots or long-term investments.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Auspicious Dates Horizontal Scroll */}
+                <section>
+                  <div className="flex justify-between items-center mb-4 px-2">
+                    <h2 className="text-lg font-bold">Upcoming Dates</h2>
+                    <button onClick={() => { haptic.light(); setIsMuhurthamCalendarOpen(true); }} className="text-xs font-bold text-primary px-3 py-1 bg-primary/10 rounded-full active:scale-95 transition-transform">View Calendar</button>
+                  </div>
+                  <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
+                    {/* Date 1 */}
+                    <div className="min-w-[140px] glass-card rounded-3xl p-5 flex flex-col items-center justify-center space-y-3 shadow-sm border border-white/40">
+                      <div className="w-12 h-12 bg-surface-container-highest rounded-2xl flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary">brightness_7</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="block text-xs font-bold text-on-surface-variant">SEPT 14</span>
+                        <span className="text-sm font-extrabold text-on-surface">Marriage</span>
+                      </div>
+                    </div>
+                    {/* Date 2 */}
+                    <div className="min-w-[140px] glass-card rounded-3xl p-5 flex flex-col items-center justify-center space-y-3 shadow-sm border border-white/40">
+                      <div className="w-12 h-12 bg-surface-container-highest rounded-2xl flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary">house</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="block text-xs font-bold text-on-surface-variant">OCT 02</span>
+                        <span className="text-sm font-extrabold text-on-surface">House</span>
+                      </div>
+                    </div>
+                    {/* Date 3 */}
+                    <div className="min-w-[140px] glass-card rounded-3xl p-5 flex flex-col items-center justify-center space-y-3 shadow-sm border border-white/40">
+                      <div className="w-12 h-12 bg-surface-container-highest rounded-2xl flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary">payments</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="block text-xs font-bold text-on-surface-variant">OCT 18</span>
+                        <span className="text-sm font-extrabold text-on-surface">Wealth</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Vimshottari Dasa Flow */}
+                <section className="space-y-6">
+                  <h2 className="text-lg font-bold px-2">Vimshottari Dasa Flow ({girlDetails.name.split(' ')[0]})</h2>
+                  <div className="relative space-y-8 pl-8">
+                    {/* Timeline Line */}
+                    <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-primary via-surface-variant to-surface-variant opacity-40"></div>
+                    
+                    {(() => {
+                      const now = new Date();
+                      const currentIndex = girlDasa.findIndex(d => now >= d.startDate && now <= d.endDate);
+                      const displayDasas = currentIndex !== -1 
+                        ? girlDasa.slice(currentIndex, currentIndex + 4)
+                        : girlDasa.slice(0, 4);
+
+                      return displayDasas.map((dasa, idx) => {
+                        const isCurrent = idx === 0;
+                        const progress = isCurrent 
+                          ? Math.max(0, Math.min(100, ((now.getTime() - dasa.startDate.getTime()) / (dasa.endDate.getTime() - dasa.startDate.getTime())) * 100))
+                          : 0;
+
+                        return (
+                          <div key={dasa.planet} className={`relative ${!isCurrent ? 'opacity-60' : ''}`}>
+                            <div className={`absolute -left-[29px] top-1 ${isCurrent ? 'w-5 h-5 bg-primary ring-4 ring-primary/20' : 'w-4 h-4 bg-surface-variant border-2 border-white'} rounded-full flex items-center justify-center`}>
+                              {isCurrent && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                            </div>
+                            <div className={`glass-card rounded-[24px] p-5 shadow-sm ${isCurrent ? 'border-l-4 border-primary' : ''}`}>
+                              <div className="flex justify-between items-start mb-2">
+                                <div>
+                                  <h4 className={`font-extrabold ${isCurrent ? 'text-primary' : ''}`}>{dasa.planet} Mahadasa</h4>
+                                  <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                                    {isCurrent ? 'Current Period' : idx === 1 ? 'Next Major Cycle' : 'Upcoming'}
+                                  </p>
+                                </div>
+                                <span className={`text-xs font-bold ${isCurrent ? 'bg-primary/10 text-primary' : 'bg-surface-container-highest text-on-surface-variant'} px-2 py-0.5 rounded-lg`}>
+                                  {dasa.startYear} - {dasa.endYear}
+                                </span>
+                              </div>
+                              {isCurrent && (
+                                <div className="bg-surface-container-low rounded-xl p-3 mt-3">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold">Active Period</span>
+                                    <span className="text-[10px] font-bold text-on-surface-variant">Ends {dasa.endYear}</span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-surface-variant rounded-full mt-2 overflow-hidden">
+                                    <div className="h-full bg-primary/60 rounded-full" style={{ width: `${progress}%` }}></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </section>
+
+                {/* Astrology Background Texture/Graphic */}
+                <div className="flex justify-center py-8 opacity-20 pointer-events-none">
+                  <svg className="w-48 h-48 stroke-primary fill-none" viewBox="0 0 200 200">
+                    <circle cx="100" cy="100" r="90" strokeWidth="0.5"></circle>
+                    <circle cx="100" cy="100" r="60" strokeWidth="0.5"></circle>
+                    <path d="M100 10 L100 190 M10 100 L190 100 M36.4 36.4 L163.6 163.6 M163.6 36.4 L36.4 163.6" strokeWidth="0.5"></path>
+                    <text className="fill-primary text-[8px] font-bold" x="95" y="25">ARI</text>
+                    <text className="fill-primary text-[8px] font-bold" x="175" y="105">CAN</text>
+                    <text className="fill-primary text-[8px] font-bold" x="95" y="185">LIB</text>
+                    <text className="fill-primary text-[8px] font-bold" x="15" y="105">CAP</text>
+                  </svg>
+                </div>
+
+                {/* Floating Action Button for detailed report */}
+                <div className="fixed bottom-24 right-6 z-40">
+                  <button 
+                    onClick={() => { haptic.light(); setView('analysis'); }}
+                    className="w-14 h-14 bg-gradient-to-tr from-primary to-primary-container rounded-full shadow-lg shadow-primary/30 flex items-center justify-center text-white active:scale-90 transition-transform duration-150"
+                  >
+                    <span className="material-symbols-outlined text-2xl">arrow_back</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {view === 'chart' && (
+            <motion.div 
+              key="chart"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="relative min-h-screen pb-32"
+            >
+              <div className="relative z-10 space-y-8">
+                <section className="space-y-1 mt-4">
+                  <h1 className="text-3xl font-extrabold tracking-tight text-on-surface leading-tight">Rashi Chakram</h1>
+                  <p className="text-on-surface-variant/70 font-medium">Planetary positions & alignments</p>
+                </section>
+
+                {/* Boy's Chart */}
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Boy's Chart</h2>
+                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">NATAL</span>
+                  </div>
+                  <div className="glass-card rounded-[32px] p-4 shadow-sm border border-white/50">
+                    <div className="rasi-grid w-full overflow-hidden rounded-2xl bg-white/40">
+                      {/* Row 1 */}
+                      <div className="rasi-cell border-t-0 border-l-0 text-[10px] font-bold text-on-surface-variant">PI</div>
+                      <div className="rasi-cell border-t-0 text-[10px] font-bold text-on-surface-variant">AR</div>
+                      <div className="rasi-cell border-t-0 text-[10px] font-bold text-on-surface-variant">TA <span className="text-primary mt-1">JU</span></div>
+                      <div className="rasi-cell border-t-0 border-r-0 text-[10px] font-bold text-on-surface-variant">GE</div>
+                      {/* Row 2 */}
+                      <div className="rasi-cell border-l-0 text-[10px] font-bold text-on-surface-variant">AQ <span className="text-primary mt-1">SA</span></div>
+                      <div className="rasi-center flex items-center justify-center">
+                        <div className="text-center">
+                          <span className="text-[10px] font-bold text-on-surface-variant/40 block mb-1">ASC</span>
+                          <span className="text-sm font-extrabold text-primary">Karka</span>
+                        </div>
+                      </div>
+                      <div className="rasi-cell border-r-0 text-[10px] font-bold text-on-surface-variant">CN <span className="text-primary mt-1">MO</span></div>
+                      {/* Row 3 */}
+                      <div className="rasi-cell border-l-0 text-[10px] font-bold text-on-surface-variant">CP</div>
+                      <div className="rasi-cell border-r-0 text-[10px] font-bold text-on-surface-variant">LE <span className="text-primary mt-1">SU</span></div>
+                      {/* Row 4 */}
+                      <div className="rasi-cell border-b-0 border-l-0 text-[10px] font-bold text-on-surface-variant">SA</div>
+                      <div className="rasi-cell border-b-0 text-[10px] font-bold text-on-surface-variant">SC <span className="text-primary mt-1">MA</span></div>
+                      <div className="rasi-cell border-b-0 text-[10px] font-bold text-on-surface-variant">LI <span className="text-primary mt-1">VE</span></div>
+                      <div className="rasi-cell border-b-0 border-r-0 text-[10px] font-bold text-on-surface-variant">VI <span className="text-primary mt-1">ME</span></div>
+                    </div>
+                    <div className="mt-4 px-2 py-3 bg-surface-container-low/50 rounded-2xl flex justify-around text-center">
+                      <div>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Nakshatra</p>
+                        <p className="text-xs font-bold text-on-surface">Rohini</p>
+                      </div>
+                      <div className="w-px h-6 bg-outline-variant/20"></div>
+                      <div>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Rasi</p>
+                        <p className="text-xs font-bold text-on-surface">Vrishabha</p>
+                      </div>
+                      <div className="w-px h-6 bg-outline-variant/20"></div>
+                      <div>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Pada</p>
+                        <p className="text-xs font-bold text-on-surface">2</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Girl's Chart */}
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Girl's Chart</h2>
+                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">NATAL</span>
+                  </div>
+                  <div className="glass-card rounded-[32px] p-4 shadow-sm border border-white/50">
+                    <div className="rasi-grid w-full overflow-hidden rounded-2xl bg-white/40">
+                      {/* Row 1 */}
+                      <div className="rasi-cell border-t-0 border-l-0 text-[10px] font-bold text-on-surface-variant">PI <span className="text-primary mt-1">MA</span></div>
+                      <div className="rasi-cell border-t-0 text-[10px] font-bold text-on-surface-variant">AR</div>
+                      <div className="rasi-cell border-t-0 text-[10px] font-bold text-on-surface-variant">TA</div>
+                      <div className="rasi-cell border-t-0 border-r-0 text-[10px] font-bold text-on-surface-variant">GE <span className="text-primary mt-1">JU</span></div>
+                      {/* Row 2 */}
+                      <div className="rasi-cell border-l-0 text-[10px] font-bold text-on-surface-variant">AQ</div>
+                      <div className="rasi-center flex items-center justify-center">
+                        <div className="text-center">
+                          <span className="text-[10px] font-bold text-on-surface-variant/40 block mb-1">ASC</span>
+                          <span className="text-sm font-extrabold text-primary">Simha</span>
+                        </div>
+                      </div>
+                      <div className="rasi-cell border-r-0 text-[10px] font-bold text-on-surface-variant">CN <span className="text-primary mt-1">SU</span></div>
+                      {/* Row 3 */}
+                      <div className="rasi-cell border-l-0 text-[10px] font-bold text-on-surface-variant">CP <span className="text-primary mt-1">SA</span></div>
+                      <div className="rasi-cell border-r-0 text-[10px] font-bold text-on-surface-variant">LE <span className="text-primary mt-1">ME</span></div>
+                      {/* Row 4 */}
+                      <div className="rasi-cell border-b-0 border-l-0 text-[10px] font-bold text-on-surface-variant">SA <span className="text-primary mt-1">MO</span></div>
+                      <div className="rasi-cell border-b-0 text-[10px] font-bold text-on-surface-variant">SC</div>
+                      <div className="rasi-cell border-b-0 text-[10px] font-bold text-on-surface-variant">LI <span className="text-primary mt-1">VE</span></div>
+                      <div className="rasi-cell border-b-0 border-r-0 text-[10px] font-bold text-on-surface-variant">VI</div>
+                    </div>
+                    <div className="mt-4 px-2 py-3 bg-surface-container-low/50 rounded-2xl flex justify-around text-center">
+                      <div>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Nakshatra</p>
+                        <p className="text-xs font-bold text-on-surface">Moola</p>
+                      </div>
+                      <div className="w-px h-6 bg-outline-variant/20"></div>
+                      <div>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Rasi</p>
+                        <p className="text-xs font-bold text-on-surface">Dhanu</p>
+                      </div>
+                      <div className="w-px h-6 bg-outline-variant/20"></div>
+                      <div>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Pada</p>
+                        <p className="text-xs font-bold text-on-surface">4</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                {/* Action Buttons */}
+                <section className="space-y-3 pt-4">
+                  <button 
+                    onClick={() => { haptic.light(); downloadPDF(); }}
+                    className="w-full bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-fixed font-bold py-4 rounded-full shadow-xl shadow-orange-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-lg">download</span>
+                    Download Match Report
+                  </button>
+                  <button 
+                    onClick={() => { haptic.light(); setView('basic'); }}
+                    className="w-full bg-white/40 backdrop-blur-md border border-white/60 text-on-surface-variant font-bold py-4 rounded-full active:scale-[0.98] transition-all"
+                  >
+                    Back to Dashboard
+                  </button>
+                </section>
+              </div>
+            </motion.div>
+          )}
+
+          {view === 'analysis' && indepthResult && (
+            <motion.div 
+              key="analysis"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="relative min-h-screen pb-32"
+              id="report-content"
+            >
+              {/* Background Graphic Elements */}
+              <div className="absolute top-20 right-[-20%] opacity-10 w-64 h-64 rotate-12 pointer-events-none z-0">
+                <img 
+                  className="w-full h-full object-contain" 
+                  alt="Celestial patterns" 
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB62n4Y_onNANxK-i_mulUA3DcednmezvkPBzy8JjV4IbwHU04XuS9V4k0yKvvTxhEFMtCrQ1J8dqVBLRh6l2_cek4-A0dJoZpqdmoSmUBIlvIuTS_qen5EJWgVrIRLIQ5EzDHHyv37qoDtCgjiU3unM7U5ZPjPlPRMHGQytFoPE9ED1glt5toKM07VD8lbwTKGUEYvON2SBiktI81H2Bvm7ffqHaqvSrRWfLqvbop3PqnxhsuDptPSTyBSlR_orsPoD07RQrLFjA"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+
+              <div className="relative z-10 space-y-8">
+                {/* Headline */}
+                <section className="pt-4">
+                  <h1 className="text-3xl font-extrabold tracking-tight text-on-surface mb-2 leading-tight">
+                    In-depth Cosmic <br/>
+                    <span className="text-primary italic font-semibold">Analysis.</span>
+                  </h1>
+                  <p className="text-on-surface-variant text-sm font-medium leading-relaxed opacity-80">
+                    A detailed verification of planetary alignment and dosha balancing for lifelong harmony.
+                  </p>
+                </section>
+
+                {/* Celestial Analysis Card with Rashi Chart Button */}
+                <section>
+                  <div className="glass-card rounded-[32px] p-6 shadow-sm border border-white/40 bg-celestial-gradient text-white">
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-xl font-bold">Rashi Chakram</h2>
+                        <p className="text-white/70 text-xs mt-1 font-medium">Planetary positions & alignments</p>
+                      </div>
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                        <span className="material-symbols-outlined text-white">grid_view</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="flex -space-x-3">
+                        <div className="w-10 h-10 rounded-full border-2 border-white bg-primary-container flex items-center justify-center text-[10px] font-bold">B</div>
+                        <div className="w-10 h-10 rounded-full border-2 border-white bg-secondary-container flex items-center justify-center text-[10px] font-bold text-on-secondary-container">G</div>
+                      </div>
+                      <div className="text-xs font-medium text-white/90">
+                        Detailed natal charts for both partners
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={() => { haptic.light(); setView('chart'); }}
+                        className="w-full py-4 bg-white text-primary font-extrabold rounded-2xl shadow-lg shadow-black/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                        View Rashi Chart
+                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                      </button>
+                      <button 
+                        onClick={() => { haptic.light(); downloadPDF(); }}
+                        className="w-full py-3 bg-white/20 text-white border border-white/30 font-bold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-xs"
+                      >
+                        <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                        Download PDF
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Papasamyam Balance Card */}
+                <section>
+                  <div className="glass-card rounded-[32px] p-6 shadow-sm border border-white/40">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-lg font-bold text-on-surface">Papasamyam Balance</h2>
+                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1 uppercase tracking-wider ${
+                        indepthResult.papasamyam.isCompatible ? 'bg-[#e7f5ed] text-[#1e5d3c]' : 'bg-error-container text-on-error-container'
+                      }`}>
+                        <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          {indepthResult.papasamyam.isCompatible ? 'check_circle' : 'warning'}
+                        </span> 
+                        {indepthResult.papasamyam.isCompatible ? 'Balanced' : 'High Deviation'}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      {/* Boy */}
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                          <span>{boyDetails.name.split(' ')[0]}</span>
+                          <span className="text-primary">{indepthResult.papasamyam.boyScore} Score</span>
+                        </div>
+                        <div className="h-3 w-full bg-surface-container rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(indepthResult.papasamyam.boyScore / 20) * 100}%` }}
+                            transition={{ duration: 1, delay: 0.2 }}
+                            className="h-full bg-gradient-to-r from-primary to-primary-container rounded-full"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Girl */}
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
+                          <span>{girlDetails.name.split(' ')[0]}</span>
+                          <span className="text-primary">{indepthResult.papasamyam.girlScore} Score</span>
+                        </div>
+                        <div className="h-3 w-full bg-surface-container rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(indepthResult.papasamyam.girlScore / 20) * 100}%` }}
+                            transition={{ duration: 1, delay: 0.4 }}
+                            className="h-full bg-gradient-to-r from-primary to-primary-container rounded-full opacity-80"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <p className="mt-6 text-xs text-on-surface-variant leading-relaxed italic border-t border-outline-variant/10 pt-4">
+                      {indepthResult.papasamyam.description}
+                    </p>
+                  </div>
+                </section>
+
+                {/* Kuja Dosham Analysis */}
+                <section className="grid grid-cols-2 gap-4">
+                  <div className="bg-surface-container-low rounded-[28px] p-5 flex flex-col items-center justify-center text-center glass-card">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${indepthResult.chovvaDosham.hasDosham ? 'bg-error-container' : 'bg-surface-container-highest'}`}>
+                      <span className={`material-symbols-outlined ${indepthResult.chovvaDosham.hasDosham ? 'text-error' : 'text-on-surface-variant'}`} style={{ fontVariationSettings: indepthResult.chovvaDosham.hasDosham ? "'FILL' 1" : "" }}>
+                        {indepthResult.chovvaDosham.hasDosham ? 'flare' : 'bedtime'}
+                      </span>
+                    </div>
+                    <h3 className="text-xs font-bold text-on-surface mb-1">Kuja Dosham</h3>
+                    <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant mb-3 font-semibold">{boyDetails.name.split(' ')[0]}</p>
+                    <div className={`bg-white px-4 py-1.5 rounded-full text-[11px] font-bold shadow-sm ${indepthResult.chovvaDosham.hasDosham ? 'text-error' : 'text-[#1e5d3c]'}`}>
+                      {indepthResult.chovvaDosham.hasDosham ? 'Present' : 'Absent'}
+                    </div>
+                  </div>
+
+                  <div className="bg-surface-container-low rounded-[28px] p-5 flex flex-col items-center justify-center text-center glass-card">
+                    <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-3">
+                      <span className="material-symbols-outlined text-on-surface-variant">bedtime</span>
+                    </div>
+                    <h3 className="text-xs font-bold text-on-surface mb-1">Kuja Dosham</h3>
+                    <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant mb-3 font-semibold">{girlDetails.name.split(' ')[0]}</p>
+                    <div className="bg-white px-4 py-1.5 rounded-full text-[#1e5d3c] text-[11px] font-bold shadow-sm">
+                      Absent
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 bg-white/40 p-4 rounded-2xl border border-outline-variant/10 glass-card">
+                    <p className="text-[11px] text-on-surface-variant leading-tight">
+                      <strong className="text-on-surface">Insight:</strong> {indepthResult.chovvaDosham.description}
+                    </p>
+                  </div>
+                </section>
+
+                {/* Bhava Analysis */}
+                <section>
+                  <h2 className="text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant mb-4 ml-1">Bhava Analysis</h2>
+                  <div className="flex flex-col gap-3">
+                    {[
+                      { house: '1st House (Lagna)', status: 'Strong', desc: 'Indicates personal growth and vitality.', icon: 'person_outline' },
+                      { house: '7th House (Kalatra)', status: 'Promising', desc: 'Focus on partnership and marital bliss.', icon: 'favorite' },
+                      { house: '8th House (Ayush)', status: 'Balanced', desc: 'Longevity and transformative experiences.', icon: 'shield' }
+                    ].map((item, idx) => (
+                      <motion.div 
+                        key={item.house}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 * idx }}
+                        className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-outline-variant/5 glass-card"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                          <span className="material-symbols-outlined">{item.icon}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center mb-1">
+                            <h4 className="text-xs font-bold">{item.house}</h4>
+                            <span className="text-[10px] text-primary font-bold">{item.status}</span>
+                          </div>
+                          <p className="text-[10px] text-on-surface-variant leading-none">{item.desc}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Celestial Recommendation */}
+                <section className="pb-10">
+                  <div className="relative overflow-hidden rounded-[40px] bg-gradient-to-br from-[#904D00] to-[#F2994A] p-8 text-white shadow-xl">
+                    {/* Sparkle decorations */}
+                    <span className="material-symbols-outlined absolute top-4 right-8 text-white/20 text-4xl">auto_awesome</span>
+                    <span className="material-symbols-outlined absolute bottom-10 left-4 text-white/10 text-6xl">flare</span>
+                    
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                      <h3 className="text-sm font-bold uppercase tracking-[0.2em] mb-4 text-white/80">Celestial Recommendation</h3>
+                      
+                      <div className="relative mb-6">
+                        <svg className="w-32 h-32 transform -rotate-90">
+                          <circle className="text-white/10" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeWidth="8"></circle>
+                          <motion.circle 
+                            initial={{ strokeDashoffset: 364.4 }}
+                            animate={{ strokeDashoffset: 364.4 - (364.4 * (matchResult?.totalScore || 0) / 10) }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                            className="text-white" 
+                            cx="64" cy="64" 
+                            fill="transparent" 
+                            r="58" 
+                            stroke="currentColor" 
+                            strokeDasharray="364.4" 
+                            strokeLinecap="round" 
+                            strokeWidth="8"
+                          ></motion.circle>
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-3xl font-black">{((matchResult?.totalScore || 0) * 10).toFixed(0)}%</span>
+                          <span className="text-[10px] font-bold uppercase">Score</span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm font-medium leading-relaxed mb-6 px-2">
+                        {indepthResult.overallRecommendation}
+                      </p>
+                      
+                      <div className="flex flex-col gap-3 w-full">
+                        <button 
+                          onClick={() => { haptic.light(); downloadPDF(); }}
+                          className="w-full py-4 px-6 bg-white text-primary rounded-full font-bold text-sm shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform duration-200"
+                        >
+                          <span className="material-symbols-outlined text-lg">picture_as_pdf</span>
+                          Download Detailed PDF
+                        </button>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={() => { haptic.light(); setView('muhurtham'); }}
+                            className="w-full py-3 px-4 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-transform duration-200"
+                          >
+                            <span className="material-symbols-outlined text-sm">calendar_month</span>
+                            Muhurtham
+                          </button>
+                          <button 
+                            onClick={() => { haptic.light(); setView('basic'); }}
+                            className="w-full py-3 px-4 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-full font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-transform duration-200"
+                          >
+                            <span className="material-symbols-outlined text-sm">arrow_back</span>
+                            Back
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </motion.div>
+          )}
+
+          {view === 'janam-kundli' && (
+            <motion.div 
+              key="janam-kundli"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="relative min-h-screen pb-24"
+            >
+              <section className="text-center space-y-6 pt-4">
+                <div className="space-y-1">
+                  <p className="text-primary font-bold tracking-widest text-[10px] uppercase">Vedic Astrology</p>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">Janam Kundli</h1>
+                </div>
+                <div className="bg-white/60 backdrop-blur-2xl rounded-[32px] p-8 shadow-sm border border-white/40 text-left">
+                  <p className="text-on-surface-variant leading-relaxed text-sm mb-6">
+                    A Janam Kundli, or birth chart, is a cosmic map of the heavens at the exact moment of your birth. It reveals your personality, strengths, weaknesses, and the path of your life according to Vedic astrology.
+                  </p>
+                  <div className="space-y-4">
+                    <div className="bg-surface-container-low p-4 rounded-2xl">
+                      <h3 className="font-bold text-on-surface mb-1">Planetary Positions</h3>
+                      <p className="text-xs text-on-surface-variant">Understand how the planets influence your daily life and decisions.</p>
+                    </div>
+                    <div className="bg-surface-container-low p-4 rounded-2xl">
+                      <h3 className="font-bold text-on-surface mb-1">Dasha System</h3>
+                      <p className="text-xs text-on-surface-variant">Discover the major planetary periods that shape your destiny.</p>
+                    </div>
+                    <div className="bg-surface-container-low p-4 rounded-2xl">
+                      <h3 className="font-bold text-on-surface mb-1">Yoga & Doshas</h3>
+                      <p className="text-xs text-on-surface-variant">Learn about the auspicious combinations and potential challenges in your chart.</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setView('home')}
+                    className="w-full mt-8 bg-primary text-white font-semibold py-4 rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+                  >
+                    Back to Home
+                  </button>
+                </div>
+              </section>
+            </motion.div>
+          )}
+
+
+        {/* About Us View */}
+      {view === 'about' && (
+          <motion.div 
+            key="about"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
+          >
+            <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
+              <h2 className="text-3xl font-black text-slate-900 mb-6">About Us</h2>
+              <div className="space-y-4 text-slate-600 leading-relaxed">
+                <p>Grid Astro is a modern astrological platform that bridges the gap between ancient Keralite traditions and contemporary precision.</p>
+                <p>Our mission is to provide celestial clarity through advanced algorithms and deep spiritual insights, helping you navigate life's most important decisions.</p>
+                <p>Founded by a team of expert astrologers and data scientists, we ensure that every calculation is rooted in authentic Vedic principles.</p>
+              </div>
+              <button 
+                onClick={() => setView('home')}
+                className="mt-8 w-full py-4 bg-slate-100 text-slate-800 font-bold rounded-full active:scale-95 transition-transform"
+              >
+                Back to Home
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+      {/* Contact Us View */}
+      {view === 'contact' && (
+          <motion.div 
+            key="contact"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
+          >
+            <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
+              <h2 className="text-3xl font-black text-slate-900 mb-6">Contact Us</h2>
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <span className="material-symbols-outlined">mail</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Email</p>
+                    <p className="text-slate-800 font-medium">support@gridastro.com</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <span className="material-symbols-outlined">location_on</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Office</p>
+                    <p className="text-slate-800 font-medium">123 Celestial Way, Star City, Kerala</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <span className="material-symbols-outlined">call</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Phone</p>
+                    <p className="text-slate-800 font-medium">+91 98765 43210</p>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setView('home')}
+                className="mt-10 w-full py-4 bg-primary text-white font-bold rounded-full active:scale-95 transition-transform"
+              >
+                Send Message
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+      {/* Privacy Policy View */}
+      {view === 'privacy' && (
+          <motion.div 
+            key="privacy"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
+          >
+            <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
+              <h2 className="text-3xl font-black text-slate-900 mb-6">Privacy Policy</h2>
+              <div className="space-y-4 text-slate-600 text-sm leading-relaxed overflow-y-auto max-h-[400px] pr-2">
+                <p className="font-bold text-slate-800">1. Data Collection</p>
+                <p>We collect birth details (date, time, place) solely for the purpose of generating astrological reports. This data is processed locally and not shared with third parties.</p>
+                <p className="font-bold text-slate-800">2. Usage</p>
+                <p>Your data is used to calculate compatibility, planetary positions, and celestial recommendations.</p>
+                <p className="font-bold text-slate-800">3. Security</p>
+                <p>We implement industry-standard security measures to protect your personal information.</p>
+                <p className="font-bold text-slate-800">4. Cookies</p>
+                <p>We use minimal cookies to enhance your user experience and remember your preferences.</p>
+              </div>
+              <button 
+                onClick={() => setView('home')}
+                className="mt-8 w-full py-4 bg-slate-100 text-slate-800 font-bold rounded-full active:scale-95 transition-transform"
+              >
+                Back to Home
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+      {/* Terms of Service View */}
+      {view === 'terms' && (
+          <motion.div 
+            key="terms"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
+          >
+            <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
+              <h2 className="text-3xl font-black text-slate-900 mb-6">Terms of Service</h2>
+              <div className="space-y-4 text-slate-600 text-sm leading-relaxed overflow-y-auto max-h-[400px] pr-2">
+                <p className="font-bold text-slate-800">1. Acceptance of Terms</p>
+                <p>By using Grid Astro, you agree to be bound by these terms. Our services are provided for informational and entertainment purposes only.</p>
+                <p className="font-bold text-slate-800">2. Accuracy of Data</p>
+                <p>While we strive for high precision, astrological calculations are based on traditional interpretations and should not be used as a substitute for professional advice.</p>
+                <p className="font-bold text-slate-800">3. User Responsibility</p>
+                <p>You are responsible for providing accurate birth details. We are not liable for any decisions made based on our reports.</p>
+              </div>
+              <button 
+                onClick={() => setView('home')}
+                className="mt-8 w-full py-4 bg-slate-100 text-slate-800 font-bold rounded-full active:scale-95 transition-transform"
+              >
+                Back to Home
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+      {/* Help Center View */}
+      {view === 'help' && (
+          <motion.div 
+            key="help"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
+          >
+            <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
+              <h2 className="text-3xl font-black text-slate-900 mb-6">Help Center</h2>
+              <div className="space-y-4">
+                {[
+                  { q: "How do I find my birth time?", a: "Check your birth certificate or consult with family members. Accuracy is key for precise charts." },
+                  { q: "What is Porutham?", a: "It's a traditional Keralite system for matching horoscopes based on 10 major compatibility factors." },
+                  { q: "Is my data secure?", a: "Yes, we process all calculations locally and do not store your personal birth details on our servers." }
+                ].map((item) => (
+                  <div key={item.q} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="font-bold text-slate-800 text-sm mb-1">{item.q}</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+              <button 
+                onClick={() => setView('home')}
+                className="mt-8 w-full py-4 bg-primary text-white font-bold rounded-full active:scale-95 transition-transform"
+              >
+                Contact Support
+              </button>
+            </div>
+          </motion.div>
+        )}
+        </AnimatePresence>
+
+
+
+      {/* Explanation Modal */}
+      <AnimatePresence>
+        {selectedExplanation && (
+          <motion.div
+            key="explanation-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedExplanation(null)}
+            className="fixed inset-0 z-[100] bg-surface-container-highest/40 backdrop-blur-md"
+          />
+        )}
+        {selectedExplanation && (
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              key="explanation-content"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white/90 backdrop-blur-2xl rounded-[40px] shadow-2xl border border-white/50 overflow-hidden pointer-events-auto"
+            >
+              <div className="p-8">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-on-surface tracking-tight">{selectedExplanation.malayalamTitle}</h3>
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-1">{selectedExplanation.title}</p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedExplanation(null)}
+                    className="p-2 rounded-2xl bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors"
+                  >
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="bg-surface-container-lowest/50 rounded-3xl p-5 border border-white/20">
+                    <p className="text-on-surface leading-relaxed text-lg font-bold">
+                      {selectedExplanation.malayalamDescription}
+                    </p>
+                  </div>
+                  <div className="h-px bg-surface-variant/20 w-full" />
+                  <div className="px-2">
+                    <p className="text-on-surface-variant leading-relaxed text-sm italic font-medium">
+                      {selectedExplanation.description}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedExplanation(null)}
+                  className="w-full mt-8 py-5 bg-primary text-on-primary rounded-[24px] font-bold uppercase tracking-widest text-xs shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  Understood
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Side Menu Drawer */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div 
+            key="menu-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMenuOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+          />
+        )}
+        {isMenuOpen && (
+          <motion.div 
+            key="menu-drawer"
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-[101] shadow-2xl flex flex-col"
+          >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-br from-primary/5 to-transparent">
+                <div className="text-xl tracking-tight text-slate-900 flex items-center gap-0.5 [&_span:first-child]:font-bold [&_span:last-child]:font-light">
+                  <span>Grid</span><span>Astro</span>
+                </div>
+                <button 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-slate-500">close</span>
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto py-6">
+                <div className="px-4 mb-6">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Main Menu</p>
+                  <nav className="space-y-1">
+                    {[
+                      { icon: 'home', label: 'Home', view: 'home' },
+                      { icon: 'favorite', label: 'Compatibility', view: 'form' },
+                      { icon: 'grid_view', label: 'Rashi Chart', view: 'chart' },
+                      { icon: 'auto_awesome', label: 'Janam Kundli', view: 'janam-kundli' },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={() => {
+                          setView(item.view as ViewState);
+                          setIsMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all ${
+                          view === item.view ? 'bg-primary/10 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined">{item.icon}</span>
+                        <span className="text-sm">{item.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+                
+                <div className="px-4 mb-6">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Company</p>
+                  <nav className="space-y-1">
+                    {[
+                      { icon: 'info', label: 'About Us', view: 'about' },
+                      { icon: 'mail', label: 'Contact Us', view: 'contact' },
+                      { icon: 'help', label: 'Help Center', view: 'help' },
+                      { icon: 'policy', label: 'Privacy Policy', view: 'privacy' },
+                      { icon: 'gavel', label: 'Terms of Service', view: 'terms' },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={() => {
+                          setView(item.view as ViewState);
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all"
+                      >
+                        <span className="material-symbols-outlined">{item.icon}</span>
+                        <span className="text-sm">{item.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              </div>
+              
+              <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined">verified_user</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Grid Astro Pro</p>
+                    <p className="text-[10px] text-slate-500">v1.2.0 • Premium</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 text-center">© 2026 Grid Astro. All rights reserved.</p>
+              </div>
+            </motion.div>
+          )}
+      </AnimatePresence>
+      </main>
+    </div>
+
+      {/* PDF Generation Overlay */}
+      <AnimatePresence>
+        {isGeneratingPdf && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-white"
+          >
+            <div className="w-20 h-20 relative mb-6">
+              <div className="absolute inset-0 border-4 border-white/20 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl animate-pulse">picture_as_pdf</span>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold mb-2">Generating Report</h3>
+            <p className="text-white/60 text-sm animate-pulse">Aligning celestial data for your PDF...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hidden PDF Report Template - Rendered off-screen for html2canvas */}
+      <div className="fixed top-0 w-[800px] pointer-events-none" style={{ 
+        left: '-9999px', 
+        zIndex: -9999,
+        backgroundColor: '#ffffff',
+        backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(144, 77, 0, 0.03) 0%, transparent 70%)'
+      }} id="pdf-report-template">
+        {/* Page 1: Match Report */}
+        <div className="bg-white p-12 relative overflow-hidden" style={{ height: '1131px' }}>
+          <div className="absolute inset-0 opacity-[0.02] pointer-events-none z-0 flex items-center justify-center">
+            <svg viewBox="0 0 800 800" className="w-[150%] h-[150%] text-slate-900" fill="currentColor">
+              <path d="M400 50 A350 350 0 1 1 399.9 50 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="10 10"/>
+              <path d="M400 100 A300 300 0 1 1 399.9 100 Z" fill="none" stroke="currentColor" strokeWidth="1"/>
+              <path d="M400 150 A250 250 0 1 1 399.9 150 Z" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+              <g transform="translate(400, 400)">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <g key={`pdf1-${i}`} transform={`rotate(${i * 30}) translate(0, -325)`}>
+                    <text textAnchor="middle" dominantBaseline="middle" fontSize="32" transform={`rotate(${-i * 30})`}>{ZODIAC_SIGNS[i]}</text>
+                  </g>
+                ))}
+              </g>
+            </svg>
+          </div>
+          
+          <div className="relative z-10">
+            {/* Header */}
+            <div className="text-center mb-10 border-b pb-6">
+              <h1 className="text-4xl font-black text-primary tracking-tight mb-2">Grid Astro</h1>
+              <p className="text-lg text-slate-500 uppercase tracking-widest font-semibold">Match Compatibility Report</p>
+            </div>
+
+            {/* Profiles */}
+            <div className="flex justify-between items-center mb-12 bg-slate-50 p-6 rounded-2xl">
+              <div className="text-center w-1/3">
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Boy</p>
+                <h2 className="text-2xl font-bold text-slate-800">{boyDetails.name || 'N/A'}</h2>
+                <p className="text-primary font-medium mt-1">{getBoyStar()?.malayalamName} ({getBoyStar()?.name})</p>
+              </div>
+              <div className="w-1/3 flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-3xl">favorite</span>
+                </div>
+              </div>
+              <div className="text-center w-1/3">
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Girl</p>
+                <h2 className="text-2xl font-bold text-slate-800">{girlDetails.name || 'N/A'}</h2>
+                <p className="text-primary font-medium mt-1">{getGirlStar()?.malayalamName} ({getGirlStar()?.name})</p>
+              </div>
+            </div>
+
+            {/* Score */}
+            {matchResult && (
+              <div className="text-center mb-12">
+                <div className="inline-block bg-gradient-to-br from-orange-50 to-orange-100 p-8 rounded-[40px] border border-orange-200">
+                  <p className="text-sm font-bold text-orange-800 uppercase tracking-widest mb-2">Overall Match Score</p>
+                  <h3 className="text-6xl font-black text-primary">{Math.round(matchResult.totalScore * 10)}%</h3>
+                </div>
+              </div>
+            )}
+
+            {/* Detailed Scores */}
+            {matchResult && (
+              <div className="mb-20">
+                <h4 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2">Detailed Porutham Analysis</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {matchResult.results.map((detail, idx) => (
+                    <div key={`pdf-result-${idx}`} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-slate-800">{detail.name}</p>
+                        <p className="text-xs text-slate-500">{detail.status}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-black text-primary">{detail.score}/{detail.maxScore}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Footer removed as requested */}
+          </div>
+        </div>
+
+        {/* Page 2: In-depth Analysis */}
+        {indepthResult && (
+          <div className="bg-white p-12 relative overflow-hidden" style={{ height: '1131px' }}>
+            <div className="absolute inset-0 opacity-[0.02] pointer-events-none z-0 flex items-center justify-center">
+              <svg viewBox="0 0 800 800" className="w-[150%] h-[150%] text-slate-900" fill="currentColor">
+                <path d="M400 50 A350 350 0 1 1 399.9 50 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="10 10"/>
+                <path d="M400 100 A300 300 0 1 1 399.9 100 Z" fill="none" stroke="currentColor" strokeWidth="1"/>
+                <path d="M400 150 A250 250 0 1 1 399.9 150 Z" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+                <g transform="translate(400, 400)">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <g key={`pdf2-${i}`} transform={`rotate(${i * 30}) translate(0, -325)`}>
+                      <text textAnchor="middle" dominantBaseline="middle" fontSize="32" transform={`rotate(${-i * 30})`}>{ZODIAC_SIGNS[i]}</text>
+                    </g>
+                  ))}
+                </g>
+              </svg>
+            </div>
+            
+            <div className="relative z-10">
+              {/* Header */}
+              <div className="text-center mb-10 border-b pb-6">
+                <h1 className="text-4xl font-black text-primary tracking-tight mb-2">Grid Astro</h1>
+                <p className="text-lg text-slate-500 uppercase tracking-widest font-semibold">In-Depth Cosmic Analysis</p>
+              </div>
+
+              <div className="space-y-6 pb-20">
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h5 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">balance</span>
+                    Papasamyam (Dosha Balance)
+                  </h5>
+                  <p className="text-base text-slate-600 leading-relaxed">{indepthResult.papasamyam.description}</p>
+                  <div className="mt-4 flex gap-6 text-sm font-medium bg-white p-4 rounded-xl inline-flex border border-slate-100">
+                    <span className="text-slate-500">Boy Score: <span className="text-slate-800 text-lg ml-1">{indepthResult.papasamyam.boyScore}</span></span>
+                    <div className="w-px bg-slate-200"></div>
+                    <span className="text-slate-500">Girl Score: <span className="text-slate-800 text-lg ml-1">{indepthResult.papasamyam.girlScore}</span></span>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h5 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">warning</span>
+                    Dosha Check
+                  </h5>
+                  <p className="text-base text-slate-600 leading-relaxed">{indepthResult.chovvaDosham.description}</p>
+                </div>
+                
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h5 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">timeline</span>
+                    Dasha Sandhi
+                  </h5>
+                  <p className="text-base text-slate-600 leading-relaxed">{indepthResult.dasaSandhi.description}</p>
+                </div>
+
+                <div className="bg-primary/5 p-6 rounded-2xl border border-primary/20 mt-8">
+                  <h5 className="text-lg font-bold text-primary mb-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined">psychology</span>
+                    Overall Recommendation
+                  </h5>
+                  <p className="text-base text-slate-800 font-medium leading-relaxed">{indepthResult.overallRecommendation}</p>
+                </div>
+              </div>
+              
+              {/* Footer removed as requested */}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div id="datepicker-portal" />
+      <DailyHoroscopeModal 
+        isOpen={isDailyHoroscopeOpen} 
+        onClose={() => setIsDailyHoroscopeOpen(false)} 
+      />
+
+      {/* Muhurtham Calendar Modal */}
+      <AnimatePresence>
+        {isMuhurthamCalendarOpen && (
+          <motion.div
+            key="muhurtham-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMuhurthamCalendarOpen(false)}
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+          />
+        )}
+        {isMuhurthamCalendarOpen && (
+          <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center pointer-events-none p-0 sm:p-4">
+            <motion.div
+              key="muhurtham-content"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden pointer-events-auto max-h-[90vh] flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                <h3 className="text-xl font-bold text-slate-800">Muhurtham Calendar</h3>
+                <button 
+                  onClick={() => setIsMuhurthamCalendarOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-200/50 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                <MuhurthamFinder muhurthams={muhurthams} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <PoruthamDetailModal
+        isOpen={!!selectedPorutham}
+        onClose={() => setSelectedPorutham(null)}
+        porutham={selectedPorutham}
+        icon={selectedPorutham ? getPoruthamIcon(selectedPorutham.name) : 'star'}
+      />
+    </div>
+  );
+}

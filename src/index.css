@@ -103,10 +103,17 @@
   -webkit-backdrop-filter: blur(20px);
 }
 
+html {
+  color-scheme: light only;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background-color: var(--color-background);
   background-image: radial-gradient(circle at 50% 50%, rgba(144, 77, 0, 0.02) 0%, transparent 70%);
   min-height: 100vh;
+  color-scheme: light only;
+  forced-color-adjust: none;
 }
 
 /* DatePicker Portal Styles */

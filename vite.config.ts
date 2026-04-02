@@ -12,24 +12,14 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
-          name: 'Kerala Horoscope & Match',
-          short_name: 'Horoscope',
+          name: 'Grid Astro',
+          short_name: 'Grid Astro',
           description: 'Authentic Kerala Astrology, Porutham & Daily Horoscope',
-          theme_color: '#f97316',
-          icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            }
-          ]
+          theme_color: '#904D00',
+          background_color: '#f7f9ff',
+          display: 'standalone',
+          orientation: 'portrait'
         }
       })
     ],

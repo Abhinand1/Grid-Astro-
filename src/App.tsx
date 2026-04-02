@@ -8,13 +8,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Heart, Calendar, Clock, MapPin, User, Sparkles, Menu, ArrowRight, Star, ChevronDown, CheckCircle, XCircle, ShieldAlert, Scale, Activity, ArrowLeft, Loader2, Grid3X3, Info, X } from 'lucide-react';
 import { getCurrentNakshatra } from './utils/astronomy';
 import { NAKSHATRAS } from './utils/astroData';
-import { calculatePorutham, MatchReport, PoruthamResult } from './utils/porutham';
-import { calculateIndepth, IndepthReport } from './utils/indepth';
+import { MatchReport, PoruthamResult } from './utils/porutham';
+import { IndepthReport } from './utils/indepth';
 import { RasiChart } from './components/RasiChart';
 import { DOSHAM_EXPLANATIONS, DoshamExplanation } from './constants/doshamExplanations';
 import { PORUTHAM_EXPLANATIONS, PoruthamExplanation } from './constants/poruthamExplanations';
-import { calculateDasaTimeline, DasaPeriod } from './utils/dasa';
-import { findMuhurthams, MuhurthamDate } from './utils/muhurtham';
+import { DasaPeriod } from './utils/dasa';
+import { MuhurthamDate } from './utils/muhurtham';
 import { DasaTimeline } from './components/DasaTimeline';
 import { MuhurthamFinder } from './components/MuhurthamFinder';
 import { DailyHoroscopeModal } from './components/DailyHoroscopeModal';
@@ -22,16 +22,24 @@ import { PoruthamDetailModal } from './components/PoruthamDetailModal';
 import { CustomSelect } from './components/CustomSelect';
 import { CustomDatePicker } from './components/CustomDatePicker';
 import { CustomTimePicker } from './components/CustomTimePicker';
+import { sanitizeInput } from './utils/sanitize';
 import { haptic } from './utils/haptics';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { toPng } from 'html-to-image';
+import * as Comlink from 'comlink';
+import type { AstroWorker } from './workers/astro.worker';
+import { useLanguage } from './contexts/LanguageContext';
+
+const worker = new Worker(new URL('./workers/astro.worker.ts', import.meta.url), { type: 'module' });
+const astroWorker = Comlink.wrap<AstroWorker>(worker);
 
 const ZODIAC_SIGNS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 
 type ViewState = 'home' | 'form' | 'basic' | 'chart' | 'muhurtham' | 'analysis' | 'janam-kundli' | 'about' | 'privacy' | 'contact' | 'terms' | 'help';
 
 export default function App() {
+  const { lang, setLang, t } = useLanguage();
   const [boyDetails, setBoyDetails] = useState({
     name: 'അർജുൻ (Arjun)',
     dob: '1994-05-20',
@@ -77,9 +85,15 @@ export default function App() {
 
   useEffect(() => {
     if (boyDetails.starId && girlDetails.starId) {
-      setBoyDasa(calculateDasaTimeline(boyDetails.starId, boyDetails.dob));
-      setGirlDasa(calculateDasaTimeline(girlDetails.starId, girlDetails.dob));
-      setMuhurthams(findMuhurthams(girlDetails.starId, boyDetails.starId));
+      const fetchDasaAndMuhurthams = async () => {
+        const bd = await astroWorker.calculateDasaTimeline(boyDetails.starId, boyDetails.dob);
+        const gd = await astroWorker.calculateDasaTimeline(girlDetails.starId, girlDetails.dob);
+        const m = await astroWorker.findMuhurthams(girlDetails.starId, boyDetails.starId);
+        setBoyDasa(bd);
+        setGirlDasa(gd);
+        setMuhurthams(m);
+      };
+      fetchDasaAndMuhurthams();
     }
   }, [boyDetails.starId, boyDetails.dob, girlDetails.starId, girlDetails.dob]);
 
@@ -135,14 +149,14 @@ export default function App() {
 
   const currentAlignment = getCurrentAlignment();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (boyDetails.starId === 0 || girlDetails.starId === 0) {
       alert('ദയവായി നക്ഷത്രം തിരഞ്ഞെടുക്കുക (Please select Nakshatra)');
       return;
     }
 
-    const result = calculatePorutham(girlDetails.starId, boyDetails.starId);
+    const result = await astroWorker.calculatePorutham(girlDetails.starId, boyDetails.starId);
     setMatchResult(result);
     setView('basic');
   };
@@ -150,13 +164,13 @@ export default function App() {
   const handleIndepthCheck = async () => {
     setIsLoadingIndepth(true);
     try {
-      const result = await calculateIndepth(boyDetails, girlDetails);
+      const result = await astroWorker.calculateIndepth(boyDetails, girlDetails);
       setIndepthResult(result);
       
       // Calculate Dasa and Muhurthams
-      setBoyDasa(calculateDasaTimeline(boyDetails.starId, boyDetails.dob));
-      setGirlDasa(calculateDasaTimeline(girlDetails.starId, girlDetails.dob));
-      setMuhurthams(findMuhurthams(girlDetails.starId, boyDetails.starId));
+      setBoyDasa(await astroWorker.calculateDasaTimeline(boyDetails.starId, boyDetails.dob));
+      setGirlDasa(await astroWorker.calculateDasaTimeline(girlDetails.starId, girlDetails.dob));
+      setMuhurthams(await astroWorker.findMuhurthams(girlDetails.starId, boyDetails.starId));
       
       setView('analysis');
     } catch (error) {
@@ -426,10 +440,19 @@ export default function App() {
             <span>Grid</span><span>Astro</span>
           </div>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              haptic.light();
+              setLang(lang === 'en' ? 'ml' : 'en');
+            }}
+            className="px-2 py-1 text-[10px] font-bold text-primary bg-primary/10 rounded-md uppercase tracking-wider"
+          >
+            {lang === 'en' ? 'മലയാളം' : 'EN'}
+          </button>
           <div className="flex flex-col items-end justify-center leading-none">
             <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-primary/70 mb-0.5">Nakshatra</span>
-            <span className="text-[10px] font-black text-slate-900 leading-none">{currentNakshatra.name}</span>
+            <span className="text-[10px] font-black text-slate-900 leading-none">{lang === 'ml' ? currentNakshatra.malayalamName : currentNakshatra.name}</span>
             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1">
               {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
@@ -450,24 +473,24 @@ export default function App() {
               {/* Hero Section */}
               <section className="mb-12">
                 <h1 className="text-4xl tracking-tight mb-4 leading-[1.1]">
-                  <span className="block font-extrabold text-on-surface">Your Destiny,</span>
-                  <span className="block font-light text-primary">Written in the Stars.</span>
+                  <span className="block font-extrabold text-on-surface">{t('home.hero1')}</span>
+                  <span className="block font-light text-primary">{t('home.hero2')}</span>
                 </h1>
                 <p className="text-on-surface-variant text-lg leading-relaxed mb-8 opacity-80">
-                  Modern precision meets Keralite tradition. Chart your path with celestial clarity.
+                  {t('home.desc')}
                 </p>
                 <div className="flex flex-col gap-3">
                   <button 
                     onClick={() => { haptic.light(); setView('form'); }}
                     className="bg-celestial-gradient text-white font-semibold py-4 px-8 rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-transform"
                   >
-                    Check Compatibility
+                    {t('btn.check')}
                   </button>
                   <button 
                     onClick={() => { haptic.light(); setView('janam-kundli'); }}
                     className="bg-white/60 backdrop-blur-md border border-white/30 text-primary font-semibold py-4 px-8 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)] active:scale-95 transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
                   >
-                    Explore Janam Kundli
+                    {t('home.explore')}
                   </button>
                 </div>
               </section>
@@ -478,21 +501,21 @@ export default function App() {
                   <div className="absolute -right-12 -top-12 opacity-5 pointer-events-none">
                     <span className="material-symbols-outlined text-[160px]" style={{ fontVariationSettings: "'wght' 100" }}>brightness_high</span>
                   </div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-primary/60 mb-6">Current Alignment</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-primary/60 mb-6">{t('home.current_alignment')}</h3>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="text-center">
                       <span className="material-symbols-outlined text-primary mb-2">wb_sunny</span>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Sun</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">{t('home.sun')}</p>
                       <p className="font-bold text-on-surface">{currentAlignment.sun}</p>
                     </div>
                     <div className="text-center border-x border-slate-100">
                       <span className="material-symbols-outlined text-primary mb-2">dark_mode</span>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Moon</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">{t('home.moon')}</p>
                       <p className="font-bold text-on-surface">{currentAlignment.moon}</p>
                     </div>
                     <div className="text-center">
                       <span className="material-symbols-outlined text-primary mb-2">north_east</span>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Rising</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">{t('home.rising')}</p>
                       <p className="font-bold text-on-surface">{currentAlignment.rising}</p>
                     </div>
                   </div>
@@ -502,7 +525,7 @@ export default function App() {
               {/* Divine Alignment Meter */}
               <section className="mb-12">
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                  Divine Alignment
+                  {t('home.divine_alignment')}
                   <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
                 </h2>
                 <div className="bg-surface-container-low rounded-[32px] p-8 text-center relative">
@@ -534,14 +557,14 @@ export default function App() {
                     </div>
                   </div>
                   <p className="mt-6 text-on-surface-variant/70 text-sm italic leading-relaxed">
-                    "A rare celestial harmony favored by Jupiter's transit through your 7th house."
+                    {t('home.divine_desc')}
                   </p>
                 </div>
               </section>
 
               {/* Vedic Insights */}
               <section className="mb-12">
-                <h2 className="text-2xl font-bold mb-6">Vedic Insights</h2>
+                <h2 className="text-2xl font-bold mb-6">{t('home.vedic_insights')}</h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div 
                     onClick={() => { haptic.light(); setIsDailyHoroscopeOpen(true); }}
@@ -550,10 +573,10 @@ export default function App() {
                     <div className="relative z-10">
                       <div className="flex justify-between items-start mb-12">
                         <span className="material-symbols-outlined text-3xl text-primary">auto_awesome</span>
-                        <span className="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full font-bold uppercase">Live Reading</span>
+                        <span className="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full font-bold uppercase">{t('home.live_reading')}</span>
                       </div>
-                      <h4 className="text-xl font-bold mb-1">Daily Horoscope</h4>
-                      <p className="text-sm text-on-surface-variant">Tap to get your personalized daily insight.</p>
+                      <h4 className="text-xl font-bold mb-1">{t('home.daily')}</h4>
+                      <p className="text-sm text-on-surface-variant">{t('home.daily_desc')}</p>
                     </div>
                     <div className="absolute bottom-[-20%] right-[-10%] opacity-10 pointer-events-none">
                       <img className="w-40 rotate-12" alt="Vedic diagram" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcPmYVMPJpDDrtD3NBp4EEQROZjQ0BdoadWWixtufK5EsTgGyXWE8HCiK3ZhlAbtP7hMiXpFNA-qRJYYK8Hpilj_txtInCjbzMeCoFytLlwwvLDODUsku5tZMGP4c1oOeWp8hWZpHZFlYLLl1nXIVk1_K7-nrbLkqiLWq72bSaGwsWVqiA2yZklUphpdz2IOrv9RELxNXLXbtcJkCAqeiTbHoNO2jDtSHkwdrHz3eca3vxZmssh-JRR_SR4WtiEjvmze637Y_vGw" referrerPolicy="no-referrer" />
@@ -561,13 +584,13 @@ export default function App() {
                   </div>
                   <div className="bg-surface-container-low rounded-[24px] p-5">
                     <span className="material-symbols-outlined text-primary mb-4">history_edu</span>
-                    <h4 className="font-bold text-sm mb-1">Keralite Tradition</h4>
-                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">Ashtamangala secrets.</p>
+                    <h4 className="font-bold text-sm mb-1">{t('home.keralite_tradition')}</h4>
+                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">{t('home.keralite_desc')}</p>
                   </div>
                   <div className="bg-surface-container-low rounded-[24px] p-5">
                     <span className="material-symbols-outlined text-primary mb-4">timeline</span>
-                    <h4 className="font-bold text-sm mb-1">Dasa Timeline</h4>
-                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">Current: Venus Mahadasa.</p>
+                    <h4 className="font-bold text-sm mb-1">{t('home.dasa_timeline')}</h4>
+                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">{t('home.dasa_desc')}</p>
                   </div>
                 </div>
               </section>
@@ -585,7 +608,7 @@ export default function App() {
                     </div>
                   </div>
                   <p className="text-on-surface-variant italic leading-relaxed relative z-10">
-                    "The precision of the Dasa predictions was life-changing. Grid Astro manages to make ancient wisdom feel so accessible and modern."
+                    {t('home.testimonial')}
                   </p>
                   <div className="absolute bottom-6 right-8 text-primary opacity-20">
                     <span className="material-symbols-outlined text-6xl">format_quote</span>
@@ -600,19 +623,19 @@ export default function App() {
                 </div>
                 <div className="grid grid-cols-2 gap-8 mb-12">
                   <div>
-                    <h6 className="text-xs font-bold uppercase text-slate-400 tracking-widest mb-4">Universe</h6>
+                    <h6 className="text-xs font-bold uppercase text-slate-400 tracking-widest mb-4">{t('nav.universe')}</h6>
                     <ul className="space-y-3 text-sm font-medium text-slate-600">
-                      <li><button onClick={() => setView('home')} className="hover:text-primary transition-colors">Horoscope</button></li>
-                      <li><button onClick={() => setView('form')} className="hover:text-primary transition-colors">Matching</button></li>
-                      <li><button onClick={() => setView('janam-kundli')} className="hover:text-primary transition-colors">Kundli</button></li>
+                      <li><button onClick={() => setView('home')} className="hover:text-primary transition-colors">{t('nav.horoscope')}</button></li>
+                      <li><button onClick={() => setView('form')} className="hover:text-primary transition-colors">{t('nav.matching')}</button></li>
+                      <li><button onClick={() => setView('janam-kundli')} className="hover:text-primary transition-colors">{t('nav.kundli')}</button></li>
                     </ul>
                   </div>
                   <div>
-                    <h6 className="text-xs font-bold uppercase text-slate-400 tracking-widest mb-4">Company</h6>
+                    <h6 className="text-xs font-bold uppercase text-slate-400 tracking-widest mb-4">{t('nav.company')}</h6>
                     <ul className="space-y-3 text-sm font-medium text-slate-600">
-                      <li><button onClick={() => setView('about')} className="hover:text-primary transition-colors">About Us</button></li>
-                      <li><button onClick={() => setView('privacy')} className="hover:text-primary transition-colors">Privacy</button></li>
-                      <li><button onClick={() => setView('contact')} className="hover:text-primary transition-colors">Contact</button></li>
+                      <li><button onClick={() => setView('about')} className="hover:text-primary transition-colors">{t('nav.about')}</button></li>
+                      <li><button onClick={() => setView('privacy')} className="hover:text-primary transition-colors">{t('nav.privacy_short')}</button></li>
+                      <li><button onClick={() => setView('contact')} className="hover:text-primary transition-colors">{t('nav.contact_short')}</button></li>
                     </ul>
                   </div>
                 </div>
@@ -636,8 +659,8 @@ export default function App() {
             >
               {/* Headline Section */}
               <section className="mb-8">
-                <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-2">Check Compatibility</h1>
-                <p className="text-on-surface-variant font-medium leading-relaxed">Discover your celestial alignment through the precision of Keralite Vedic astrology.</p>
+                <h1 className="text-3xl font-extrabold tracking-tight text-on-background mb-2">{t('form.title')}</h1>
+                <p className="text-on-surface-variant font-medium leading-relaxed">{t('form.desc')}</p>
               </section>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -647,41 +670,42 @@ export default function App() {
                     <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
                       <span className="material-symbols-outlined">person</span>
                     </div>
-                    <h2 className="text-lg font-bold">Partner I Details</h2>
+                    <h2 className="text-lg font-bold">{t('form.partner1')}</h2>
                   </div>
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Full Name</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.name')}</label>
                       <input 
                         className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
-                        placeholder="Enter name" 
+                        placeholder={t('form.name_placeholder')} 
                         type="text"
                         value={boyDetails.name}
-                        onChange={(e) => setBoyDetails({ ...boyDetails, name: e.target.value })}
+                        onChange={(e) => setBoyDetails({ ...boyDetails, name: sanitizeInput(e.target.value) })}
+                        maxLength={100}
                         required
                       />
                     </div>
                     <div className="space-y-1.5 group">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">Nakshatra (Star)</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.star')}</label>
                       <div className="relative">
                         <CustomSelect
                           value={boyDetails.starId || ''}
                           onChange={(val) => setBoyDetails({ ...boyDetails, starId: Number(val) })}
-                          options={NAKSHATRAS.map(star => ({ value: star.id, label: `${star.malayalamName} (${star.name})` }))}
-                          placeholder="Select Star"
+                          options={NAKSHATRAS.map(star => ({ value: star.id, label: `${lang === 'ml' ? star.malayalamName : star.name}` }))}
+                          placeholder={t('form.star_placeholder')}
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Date of Birth</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.dob')}</label>
                         <CustomDatePicker
                           value={boyDetails.dob}
                           onChange={(date) => setBoyDetails({ ...boyDetails, dob: date })}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Time of Birth</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.time')}</label>
                         <CustomTimePicker
                           value={boyDetails.time}
                           onChange={(time) => setBoyDetails({ ...boyDetails, time })}
@@ -689,14 +713,15 @@ export default function App() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Place of Birth</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.place')}</label>
                       <div className="relative">
                         <input 
                           className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 pl-11 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
-                          placeholder="Search city..." 
+                          placeholder={t('form.place_placeholder')} 
                           type="text"
                           value={boyDetails.place}
-                          onChange={(e) => setBoyDetails({ ...boyDetails, place: e.target.value })}
+                          onChange={(e) => setBoyDetails({ ...boyDetails, place: sanitizeInput(e.target.value) })}
+                          maxLength={100}
                           required
                         />
                         <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">location_on</span>
@@ -720,41 +745,42 @@ export default function App() {
                     <div className="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary">
                       <span className="material-symbols-outlined">person_2</span>
                     </div>
-                    <h2 className="text-lg font-bold">Partner II Details</h2>
+                    <h2 className="text-lg font-bold">{t('form.partner2')}</h2>
                   </div>
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Full Name</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.name')}</label>
                       <input 
                         className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
-                        placeholder="Enter name" 
+                        placeholder={t('form.name_placeholder')} 
                         type="text"
                         value={girlDetails.name}
-                        onChange={(e) => setGirlDetails({ ...girlDetails, name: e.target.value })}
+                        onChange={(e) => setGirlDetails({ ...girlDetails, name: sanitizeInput(e.target.value) })}
+                        maxLength={100}
                         required
                       />
                     </div>
                     <div className="space-y-1.5 group">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">Nakshatra (Star)</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.star')}</label>
                       <div className="relative">
                         <CustomSelect
                           value={girlDetails.starId || ''}
                           onChange={(val) => setGirlDetails({ ...girlDetails, starId: Number(val) })}
-                          options={NAKSHATRAS.map(star => ({ value: star.id, label: `${star.malayalamName} (${star.name})` }))}
-                          placeholder="Select Star"
+                          options={NAKSHATRAS.map(star => ({ value: star.id, label: `${lang === 'ml' ? star.malayalamName : star.name}` }))}
+                          placeholder={t('form.star_placeholder')}
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Date of Birth</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.dob')}</label>
                         <CustomDatePicker
                           value={girlDetails.dob}
                           onChange={(date) => setGirlDetails({ ...girlDetails, dob: date })}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Time of Birth</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.time')}</label>
                         <CustomTimePicker
                           value={girlDetails.time}
                           onChange={(time) => setGirlDetails({ ...girlDetails, time })}
@@ -762,14 +788,15 @@ export default function App() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Place of Birth</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">{t('form.place')}</label>
                       <div className="relative">
                         <input 
                           className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 pl-11 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" 
-                          placeholder="Search city..." 
+                          placeholder={t('form.place_placeholder')} 
                           type="text"
                           value={girlDetails.place}
-                          onChange={(e) => setGirlDetails({ ...girlDetails, place: e.target.value })}
+                          onChange={(e) => setGirlDetails({ ...girlDetails, place: sanitizeInput(e.target.value) })}
+                          maxLength={100}
                           required
                         />
                         <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">location_on</span>
@@ -785,14 +812,14 @@ export default function App() {
                     type="submit"
                   >
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                    Calculate Alignment
+                    {t('form.calculate')}
                   </button>
                 </div>
 
                 {/* Trust Badge */}
                 <div className="flex items-center justify-center gap-2 py-4 text-on-surface-variant/70">
                   <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                  <span className="text-[11px] font-semibold uppercase tracking-widest">Data calculated using Swiss Ephemeris precision.</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-widest">{t('form.trust_badge')}</span>
                 </div>
               </form>
             </motion.div>
@@ -810,8 +837,8 @@ export default function App() {
             >
               <section className="text-center space-y-6">
                 <div className="space-y-1">
-                  <p className="text-primary font-bold tracking-widest text-[10px] uppercase">Celestial Reading</p>
-                  <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">A Harmonious Match.</h1>
+                  <p className="text-primary font-bold tracking-widest text-[10px] uppercase">{t('result.celestial_reading')}</p>
+                  <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">{t('result.harmonious_match')}</h1>
                 </div>
 
                 {/* Main Score Gauge */}
@@ -850,18 +877,18 @@ export default function App() {
                     <span className="text-5xl font-extrabold text-on-surface tracking-tighter">
                       {Math.round((matchResult?.totalScore || 0) * 10)}%
                     </span>
-                    <span className="text-sm font-semibold text-primary opacity-80">Match Score</span>
+                    <span className="text-sm font-semibold text-primary opacity-80">{t('result.score')}</span>
                   </div>
                 </div>
 
                 <p className="text-on-surface-variant leading-relaxed text-sm px-4">
-                  The celestial alignments of your birth charts show an extraordinary resonance. Your emotional wavelengths and karmic paths are deeply intertwined, promising a journey of mutual growth and spiritual depth.
+                  {t('result.match_desc')}
                 </p>
               </section>
 
               {/* Detailed Breakdown */}
               <section className="space-y-4 mt-8">
-                <h2 className="text-xl font-bold px-1">Compatibility Poruthams</h2>
+                <h2 className="text-xl font-bold px-1">{t('result.porutham')}</h2>
                 <div className="grid gap-4">
                   {matchResult && matchResult.results.map((res, idx) => (
                     <div 
@@ -877,12 +904,12 @@ export default function App() {
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex justify-between items-start gap-2">
-                          <h3 className="font-bold text-base">{res.malayalamName} Porutham</h3>
+                          <h3 className="font-bold text-base">{lang === 'ml' ? res.malayalamName : res.name} Porutham</h3>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
                             res.status === 'Uthamam' ? 'bg-green-100 text-green-700' : 
                             res.status === 'Adhamam' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
                           }`}>
-                            {res.status === 'Uthamam' ? 'Uthamam' : res.status === 'Adhamam' ? 'Adhamam' : 'Madhyamam'}
+                            {res.status === 'Uthamam' ? t('result.uthamam') : res.status === 'Adhamam' ? t('result.adhamam') : t('result.madhyamam')}
                           </span>
                         </div>
                         <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2">
@@ -903,8 +930,8 @@ export default function App() {
                       <img alt="Astrologer" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN8ZYihF0NhKwcnoaBP2BJd4AsFzX1KVkTu_9w-bDmxATGAh7KXZy87ds1H-yC1NWJqOOhw72mgvIIAcs2jlJE_zILLlTlArytsx2UkHUFQBQHnyLEmCBYjrcvMh6HO50ky90H0YO-fHkff13ul9yd0YwzmfregCAotgzCEVeqYCqssFKglfNmpV17ih6TsZE1GqFCn5zLVvzmYGj_PD0y5jyMqJXnWfll3vORTyty1y-CEZ3KEFGjBjMmJsNJOleQszSA9ExjPA" referrerPolicy="no-referrer" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-primary">Expert Insight</p>
-                      <p className="text-[10px] text-on-surface-variant">Acharya Raghavan</p>
+                      <p className="text-xs font-bold text-primary">{t('result.expert_insight')}</p>
+                      <p className="text-[10px] text-on-surface-variant">{t('result.acharya')}</p>
                     </div>
                   </div>
                   <blockquote className="text-sm italic text-on-surface font-medium leading-relaxed">
@@ -921,7 +948,7 @@ export default function App() {
                   className="w-full h-14 bg-gradient-to-r from-primary to-primary-container text-white rounded-full font-bold shadow-[0_12px_24px_rgba(144,77,0,0.2)] active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {isGeneratingPdf ? <Loader2 size={18} className="animate-spin" /> : <span className="material-symbols-outlined">download</span>}
-                  {isGeneratingPdf ? 'Saving...' : 'Download Full Analysis (PDF)'}
+                  {isGeneratingPdf ? 'Saving...' : t('btn.download')}
                 </button>
                 <button 
                   onClick={() => { haptic.light(); handleIndepthCheck(); }}
@@ -929,7 +956,7 @@ export default function App() {
                   className="w-full h-14 bg-white/60 backdrop-blur-xl border border-primary/20 text-primary rounded-full font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {isLoadingIndepth ? <Loader2 size={18} className="animate-spin" /> : <span className="material-symbols-outlined">auto_awesome</span>}
-                  {isLoadingIndepth ? 'Analyzing...' : 'In-depth Analysis'}
+                  {isLoadingIndepth ? 'Analyzing...' : t('btn.indepth')}
                 </button>
               </section>
             </motion.div>
@@ -950,10 +977,10 @@ export default function App() {
                 {/* Hero Headline Section */}
                 <section className="mt-4">
                   <h1 className="text-3xl font-extrabold text-on-surface tracking-tight leading-tight">
-                    Auspicious Alignment <br/>
-                    <span className="text-primary font-light">&amp; Dasa Timeline</span>
+                    {t('muhurtham.auspicious_alignment')} <br/>
+                    <span className="text-primary font-light">{t('muhurtham.dasa_timeline')}</span>
                   </h1>
-                  <p className="mt-2 text-on-surface-variant text-sm font-medium opacity-80">Navigate your celestial journey through the lens of Keralite precision.</p>
+                  <p className="mt-2 text-on-surface-variant text-sm font-medium opacity-80">{t('muhurtham.desc')}</p>
                 </section>
 
                 {/* Muhurtham Strength Gauge */}
@@ -961,8 +988,8 @@ export default function App() {
                   <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary-container/10 rounded-full blur-3xl"></div>
                   <div className="flex justify-between items-end mb-6">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Current Phase</span>
-                      <h2 className="text-xl font-bold">Muhurtham Strength</h2>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">{t('muhurtham.current_phase')}</span>
+                      <h2 className="text-xl font-bold">{t('muhurtham.strength')}</h2>
                     </div>
                     <div className="text-right">
                       <span className="text-3xl font-extrabold text-primary">84%</span>
@@ -972,8 +999,8 @@ export default function App() {
                     <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#904D00] to-[#F2994A] rounded-full" style={{ width: '84%' }}></div>
                   </div>
                   <div className="mt-4 flex justify-between text-[11px] font-semibold text-on-surface-variant">
-                    <span>90-Day Forecast</span>
-                    <span className="text-primary">High Cosmic Alignment</span>
+                    <span>{t('muhurtham.90day')}</span>
+                    <span className="text-primary">{t('muhurtham.high_alignment')}</span>
                   </div>
                 </section>
 
@@ -984,9 +1011,9 @@ export default function App() {
                       <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold">Growth Synergy</h3>
+                      <h3 className="text-lg font-bold">{t('muhurtham.growth_synergy')}</h3>
                       <p className="text-sm text-white/90 leading-relaxed mt-1 font-medium">
-                        Jupiter's current transit through your 10th house favors professional expansion. A perfect time for career pivots or long-term investments.
+                        {t('muhurtham.growth_desc')}
                       </p>
                     </div>
                   </div>
@@ -995,8 +1022,8 @@ export default function App() {
                 {/* Auspicious Dates Horizontal Scroll */}
                 <section>
                   <div className="flex justify-between items-center mb-4 px-2">
-                    <h2 className="text-lg font-bold">Upcoming Dates</h2>
-                    <button onClick={() => { haptic.light(); setIsMuhurthamCalendarOpen(true); }} className="text-xs font-bold text-primary px-3 py-1 bg-primary/10 rounded-full active:scale-95 transition-transform">View Calendar</button>
+                    <h2 className="text-lg font-bold">{t('muhurtham.upcoming_dates')}</h2>
+                    <button onClick={() => { haptic.light(); setIsMuhurthamCalendarOpen(true); }} className="text-xs font-bold text-primary px-3 py-1 bg-primary/10 rounded-full active:scale-95 transition-transform">{t('muhurtham.view_calendar')}</button>
                   </div>
                   <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
                     {/* Date 1 */}
@@ -1006,7 +1033,7 @@ export default function App() {
                       </div>
                       <div className="text-center">
                         <span className="block text-xs font-bold text-on-surface-variant">SEPT 14</span>
-                        <span className="text-sm font-extrabold text-on-surface">Marriage</span>
+                        <span className="text-sm font-extrabold text-on-surface">{t('muhurtham.marriage')}</span>
                       </div>
                     </div>
                     {/* Date 2 */}
@@ -1016,7 +1043,7 @@ export default function App() {
                       </div>
                       <div className="text-center">
                         <span className="block text-xs font-bold text-on-surface-variant">OCT 02</span>
-                        <span className="text-sm font-extrabold text-on-surface">House</span>
+                        <span className="text-sm font-extrabold text-on-surface">{t('muhurtham.house')}</span>
                       </div>
                     </div>
                     {/* Date 3 */}
@@ -1026,7 +1053,7 @@ export default function App() {
                       </div>
                       <div className="text-center">
                         <span className="block text-xs font-bold text-on-surface-variant">OCT 18</span>
-                        <span className="text-sm font-extrabold text-on-surface">Wealth</span>
+                        <span className="text-sm font-extrabold text-on-surface">{t('muhurtham.wealth')}</span>
                       </div>
                     </div>
                   </div>
@@ -1034,7 +1061,7 @@ export default function App() {
 
                 {/* Vimshottari Dasa Flow */}
                 <section className="space-y-6">
-                  <h2 className="text-lg font-bold px-2">Vimshottari Dasa Flow ({girlDetails.name.split(' ')[0]})</h2>
+                  <h2 className="text-lg font-bold px-2">{t('muhurtham.vimshottari')} ({girlDetails.name.split(' ')[0]})</h2>
                   <div className="relative space-y-8 pl-8">
                     {/* Timeline Line */}
                     <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-primary via-surface-variant to-surface-variant opacity-40"></div>
@@ -1060,9 +1087,9 @@ export default function App() {
                             <div className={`glass-card rounded-[24px] p-5 shadow-sm ${isCurrent ? 'border-l-4 border-primary' : ''}`}>
                               <div className="flex justify-between items-start mb-2">
                                 <div>
-                                  <h4 className={`font-extrabold ${isCurrent ? 'text-primary' : ''}`}>{dasa.planet} Mahadasa</h4>
+                                  <h4 className={`font-extrabold ${isCurrent ? 'text-primary' : ''}`}>{dasa.planet} {t('muhurtham.mahadasa')}</h4>
                                   <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                                    {isCurrent ? 'Current Period' : idx === 1 ? 'Next Major Cycle' : 'Upcoming'}
+                                    {isCurrent ? t('muhurtham.current_period') : idx === 1 ? t('muhurtham.next_major') : t('muhurtham.upcoming')}
                                   </p>
                                 </div>
                                 <span className={`text-xs font-bold ${isCurrent ? 'bg-primary/10 text-primary' : 'bg-surface-container-highest text-on-surface-variant'} px-2 py-0.5 rounded-lg`}>
@@ -1125,15 +1152,15 @@ export default function App() {
             >
               <div className="relative z-10 space-y-8">
                 <section className="space-y-1 mt-4">
-                  <h1 className="text-3xl font-extrabold tracking-tight text-on-surface leading-tight">Rashi Chakram</h1>
-                  <p className="text-on-surface-variant/70 font-medium">Planetary positions & alignments</p>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-on-surface leading-tight">{t('chart.rashi_chakram')}</h1>
+                  <p className="text-on-surface-variant/70 font-medium">{t('chart.planetary_positions')}</p>
                 </section>
 
                 {/* Boy's Chart */}
                 <section className="space-y-4">
                   <div className="flex items-center justify-between px-1">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Boy's Chart</h2>
-                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">NATAL</span>
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">{t('chart.boy_chart')}</h2>
+                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{t('chart.natal')}</span>
                   </div>
                   <div className="glass-card rounded-[32px] p-4 shadow-sm border border-white/50">
                     <div className="rasi-grid w-full overflow-hidden rounded-2xl bg-white/40">
@@ -1162,17 +1189,17 @@ export default function App() {
                     </div>
                     <div className="mt-4 px-2 py-3 bg-surface-container-low/50 rounded-2xl flex justify-around text-center">
                       <div>
-                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Nakshatra</p>
-                        <p className="text-xs font-bold text-on-surface">Rohini</p>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">{t('chart.nakshatra')}</p>
+                        <p className="text-xs font-bold text-on-surface">{lang === 'ml' ? NAKSHATRAS.find(n => n.id === boyDetails.starId)?.malayalamName : NAKSHATRAS.find(n => n.id === boyDetails.starId)?.name || 'Rohini'}</p>
                       </div>
                       <div className="w-px h-6 bg-outline-variant/20"></div>
                       <div>
-                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Rasi</p>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">{t('chart.rasi')}</p>
                         <p className="text-xs font-bold text-on-surface">Vrishabha</p>
                       </div>
                       <div className="w-px h-6 bg-outline-variant/20"></div>
                       <div>
-                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Pada</p>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">{t('chart.pada')}</p>
                         <p className="text-xs font-bold text-on-surface">2</p>
                       </div>
                     </div>
@@ -1182,8 +1209,8 @@ export default function App() {
                 {/* Girl's Chart */}
                 <section className="space-y-4">
                   <div className="flex items-center justify-between px-1">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Girl's Chart</h2>
-                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">NATAL</span>
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">{t('chart.girl_chart')}</h2>
+                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{t('chart.natal')}</span>
                   </div>
                   <div className="glass-card rounded-[32px] p-4 shadow-sm border border-white/50">
                     <div className="rasi-grid w-full overflow-hidden rounded-2xl bg-white/40">
@@ -1212,18 +1239,18 @@ export default function App() {
                     </div>
                     <div className="mt-4 px-2 py-3 bg-surface-container-low/50 rounded-2xl flex justify-around text-center">
                       <div>
-                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Nakshatra</p>
-                        <p className="text-xs font-bold text-on-surface">Moola</p>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">{t('chart.nakshatra')}</p>
+                        <p className="text-xs font-bold text-on-surface">{lang === 'ml' ? NAKSHATRAS.find(n => n.id === girlDetails.starId)?.malayalamName : NAKSHATRAS.find(n => n.id === girlDetails.starId)?.name || 'Moola'}</p>
                       </div>
                       <div className="w-px h-6 bg-outline-variant/20"></div>
                       <div>
-                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Rasi</p>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">{t('chart.rasi')}</p>
                         <p className="text-xs font-bold text-on-surface">Dhanu</p>
                       </div>
                       <div className="w-px h-6 bg-outline-variant/20"></div>
                       <div>
-                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">Pada</p>
-                        <p className="text-xs font-bold text-on-surface">4</p>
+                        <p className="text-[9px] font-bold text-on-surface-variant/60 uppercase">{t('chart.pada')}</p>
+                        <p className="text-xs font-bold text-on-surface">1</p>
                       </div>
                     </div>
                   </div>
@@ -1235,13 +1262,13 @@ export default function App() {
                     className="w-full bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-fixed font-bold py-4 rounded-full shadow-xl shadow-orange-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined text-lg">download</span>
-                    Download Match Report
+                    {t('action.download_report')}
                   </button>
                   <button 
                     onClick={() => { haptic.light(); setView('basic'); }}
                     className="w-full bg-white/40 backdrop-blur-md border border-white/60 text-on-surface-variant font-bold py-4 rounded-full active:scale-[0.98] transition-all"
                   >
-                    Back to Dashboard
+                    {t('action.back_to_dashboard')}
                   </button>
                 </section>
               </div>
@@ -1299,7 +1326,7 @@ export default function App() {
                         <div className="w-10 h-10 rounded-full border-2 border-white bg-secondary-container flex items-center justify-center text-[10px] font-bold text-on-secondary-container">G</div>
                       </div>
                       <div className="text-xs font-medium text-white/90">
-                        Detailed natal charts for both partners
+                        {t('indepth.detailed_natal')}
                       </div>
                     </div>
 
@@ -1308,7 +1335,7 @@ export default function App() {
                         onClick={() => { haptic.light(); setView('chart'); }}
                         className="w-full py-4 bg-white text-primary font-extrabold rounded-2xl shadow-lg shadow-black/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                       >
-                        View Rashi Chart
+                        {t('indepth.view_rashi')}
                         <span className="material-symbols-outlined text-sm">arrow_forward</span>
                       </button>
                       <button 
@@ -1316,7 +1343,7 @@ export default function App() {
                         className="w-full py-3 bg-white/20 text-white border border-white/30 font-bold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-xs"
                       >
                         <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-                        Download PDF
+                        {t('action.download_pdf')}
                       </button>
                     </div>
                   </div>
@@ -1326,14 +1353,14 @@ export default function App() {
                 <section>
                   <div className="glass-card rounded-[32px] p-6 shadow-sm border border-white/40">
                     <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-lg font-bold text-on-surface">Papasamyam Balance</h2>
+                      <h2 className="text-lg font-bold text-on-surface">{t('indepth.papasamyam')}</h2>
                       <span className={`text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1 uppercase tracking-wider ${
                         indepthResult.papasamyam.isCompatible ? 'bg-[#e7f5ed] text-[#1e5d3c]' : 'bg-error-container text-on-error-container'
                       }`}>
                         <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                           {indepthResult.papasamyam.isCompatible ? 'check_circle' : 'warning'}
                         </span> 
-                        {indepthResult.papasamyam.isCompatible ? 'Balanced' : 'High Deviation'}
+                        {indepthResult.papasamyam.isCompatible ? t('indepth.balanced') : t('indepth.high_deviation')}
                       </span>
                     </div>
                     
@@ -1342,7 +1369,7 @@ export default function App() {
                       <div>
                         <div className="flex justify-between text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
                           <span>{boyDetails.name.split(' ')[0]}</span>
-                          <span className="text-primary">{indepthResult.papasamyam.boyScore} Score</span>
+                          <span className="text-primary">{indepthResult.papasamyam.boyScore} {t('indepth.score')}</span>
                         </div>
                         <div className="h-3 w-full bg-surface-container rounded-full overflow-hidden">
                           <motion.div 
@@ -1358,7 +1385,7 @@ export default function App() {
                       <div>
                         <div className="flex justify-between text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">
                           <span>{girlDetails.name.split(' ')[0]}</span>
-                          <span className="text-primary">{indepthResult.papasamyam.girlScore} Score</span>
+                          <span className="text-primary">{indepthResult.papasamyam.girlScore} {t('indepth.score')}</span>
                         </div>
                         <div className="h-3 w-full bg-surface-container rounded-full overflow-hidden">
                           <motion.div 
@@ -1385,10 +1412,10 @@ export default function App() {
                         {indepthResult.chovvaDosham.hasDosham ? 'flare' : 'bedtime'}
                       </span>
                     </div>
-                    <h3 className="text-xs font-bold text-on-surface mb-1">Kuja Dosham</h3>
+                    <h3 className="text-xs font-bold text-on-surface mb-1">{t('indepth.kuja_dosham')}</h3>
                     <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant mb-3 font-semibold">{boyDetails.name.split(' ')[0]}</p>
                     <div className={`bg-white px-4 py-1.5 rounded-full text-[11px] font-bold shadow-sm ${indepthResult.chovvaDosham.hasDosham ? 'text-error' : 'text-[#1e5d3c]'}`}>
-                      {indepthResult.chovvaDosham.hasDosham ? 'Present' : 'Absent'}
+                      {indepthResult.chovvaDosham.hasDosham ? t('indepth.present') : t('indepth.absent')}
                     </div>
                   </div>
 
@@ -1405,19 +1432,19 @@ export default function App() {
 
                   <div className="col-span-2 bg-white/40 p-4 rounded-2xl border border-outline-variant/10 glass-card">
                     <p className="text-[11px] text-on-surface-variant leading-tight">
-                      <strong className="text-on-surface">Insight:</strong> {indepthResult.chovvaDosham.description}
+                      <strong className="text-on-surface">{t('indepth.insight')}:</strong> {indepthResult.chovvaDosham.description}
                     </p>
                   </div>
                 </section>
 
                 {/* Bhava Analysis */}
                 <section>
-                  <h2 className="text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant mb-4 ml-1">Bhava Analysis</h2>
+                  <h2 className="text-sm font-extrabold uppercase tracking-[0.2em] text-on-surface-variant mb-4 ml-1">{t('indepth.bhava_analysis')}</h2>
                   <div className="flex flex-col gap-3">
                     {[
-                      { house: '1st House (Lagna)', status: 'Strong', desc: 'Indicates personal growth and vitality.', icon: 'person_outline' },
-                      { house: '7th House (Kalatra)', status: 'Promising', desc: 'Focus on partnership and marital bliss.', icon: 'favorite' },
-                      { house: '8th House (Ayush)', status: 'Balanced', desc: 'Longevity and transformative experiences.', icon: 'shield' }
+                      { house: t('indepth.house_1'), status: t('indepth.strong'), desc: t('indepth.desc_1'), icon: 'person_outline' },
+                      { house: t('indepth.house_7'), status: t('indepth.promising'), desc: t('indepth.desc_7'), icon: 'favorite' },
+                      { house: t('indepth.house_8'), status: t('indepth.balanced_status'), desc: t('indepth.desc_8'), icon: 'shield' }
                     ].map((item, idx) => (
                       <motion.div 
                         key={item.house}
@@ -1449,7 +1476,7 @@ export default function App() {
                     <span className="material-symbols-outlined absolute bottom-10 left-4 text-white/10 text-6xl">flare</span>
                     
                     <div className="relative z-10 flex flex-col items-center text-center">
-                      <h3 className="text-sm font-bold uppercase tracking-[0.2em] mb-4 text-white/80">Celestial Recommendation</h3>
+                      <h3 className="text-sm font-bold uppercase tracking-[0.2em] mb-4 text-white/80">{t('indepth.celestial_recommendation')}</h3>
                       
                       <div className="relative mb-6">
                         <svg className="w-32 h-32 transform -rotate-90">
@@ -1521,32 +1548,32 @@ export default function App() {
             >
               <section className="text-center space-y-6 pt-4">
                 <div className="space-y-1">
-                  <p className="text-primary font-bold tracking-widest text-[10px] uppercase">Vedic Astrology</p>
-                  <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">Janam Kundli</h1>
+                  <p className="text-primary font-bold tracking-widest text-[10px] uppercase">{t('page.kundli.subtitle')}</p>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">{t('page.kundli.title')}</h1>
                 </div>
                 <div className="bg-white/60 backdrop-blur-2xl rounded-[32px] p-8 shadow-sm border border-white/40 text-left">
                   <p className="text-on-surface-variant leading-relaxed text-sm mb-6">
-                    A Janam Kundli, or birth chart, is a cosmic map of the heavens at the exact moment of your birth. It reveals your personality, strengths, weaknesses, and the path of your life according to Vedic astrology.
+                    {t('page.kundli.desc')}
                   </p>
                   <div className="space-y-4">
                     <div className="bg-surface-container-low p-4 rounded-2xl">
-                      <h3 className="font-bold text-on-surface mb-1">Planetary Positions</h3>
-                      <p className="text-xs text-on-surface-variant">Understand how the planets influence your daily life and decisions.</p>
+                      <h3 className="font-bold text-on-surface mb-1">{t('page.kundli.planetary')}</h3>
+                      <p className="text-xs text-on-surface-variant">{t('page.kundli.planetary_desc')}</p>
                     </div>
                     <div className="bg-surface-container-low p-4 rounded-2xl">
-                      <h3 className="font-bold text-on-surface mb-1">Dasha System</h3>
-                      <p className="text-xs text-on-surface-variant">Discover the major planetary periods that shape your destiny.</p>
+                      <h3 className="font-bold text-on-surface mb-1">{t('page.kundli.dasha')}</h3>
+                      <p className="text-xs text-on-surface-variant">{t('page.kundli.dasha_desc')}</p>
                     </div>
                     <div className="bg-surface-container-low p-4 rounded-2xl">
-                      <h3 className="font-bold text-on-surface mb-1">Yoga & Doshas</h3>
-                      <p className="text-xs text-on-surface-variant">Learn about the auspicious combinations and potential challenges in your chart.</p>
+                      <h3 className="font-bold text-on-surface mb-1">{t('page.kundli.yoga')}</h3>
+                      <p className="text-xs text-on-surface-variant">{t('page.kundli.yoga_desc')}</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => setView('home')}
                     className="w-full mt-8 bg-primary text-white font-semibold py-4 rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-transform"
                   >
-                    Back to Home
+                    {t('action.back_to_home')}
                   </button>
                 </div>
               </section>
@@ -1564,17 +1591,17 @@ export default function App() {
             className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
           >
             <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
-              <h2 className="text-3xl font-black text-slate-900 mb-6">About Us</h2>
+              <h2 className="text-3xl font-black text-slate-900 mb-6">{t('page.about.title')}</h2>
               <div className="space-y-4 text-slate-600 leading-relaxed">
-                <p>Grid Astro is a modern astrological platform that bridges the gap between ancient Keralite traditions and contemporary precision.</p>
-                <p>Our mission is to provide celestial clarity through advanced algorithms and deep spiritual insights, helping you navigate life's most important decisions.</p>
-                <p>Founded by a team of expert astrologers and data scientists, we ensure that every calculation is rooted in authentic Vedic principles.</p>
+                <p>{t('page.about.p1')}</p>
+                <p>{t('page.about.p2')}</p>
+                <p>{t('page.about.p3')}</p>
               </div>
               <button 
                 onClick={() => setView('home')}
                 className="mt-8 w-full py-4 bg-slate-100 text-slate-800 font-bold rounded-full active:scale-95 transition-transform"
               >
-                Back to Home
+                {t('action.back_to_home')}
               </button>
             </div>
           </motion.div>
@@ -1590,14 +1617,14 @@ export default function App() {
             className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
           >
             <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
-              <h2 className="text-3xl font-black text-slate-900 mb-6">Contact Us</h2>
+              <h2 className="text-3xl font-black text-slate-900 mb-6">{t('page.contact.title')}</h2>
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                     <span className="material-symbols-outlined">mail</span>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Email</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t('page.contact.email')}</p>
                     <p className="text-slate-800 font-medium">support@gridastro.com</p>
                   </div>
                 </div>
@@ -1606,7 +1633,7 @@ export default function App() {
                     <span className="material-symbols-outlined">location_on</span>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Office</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t('page.contact.address')}</p>
                     <p className="text-slate-800 font-medium">123 Celestial Way, Star City, Kerala</p>
                   </div>
                 </div>
@@ -1615,7 +1642,7 @@ export default function App() {
                     <span className="material-symbols-outlined">call</span>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Phone</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t('page.contact.phone')}</p>
                     <p className="text-slate-800 font-medium">+91 98765 43210</p>
                   </div>
                 </div>
@@ -1624,7 +1651,7 @@ export default function App() {
                 onClick={() => setView('home')}
                 className="mt-10 w-full py-4 bg-primary text-white font-bold rounded-full active:scale-95 transition-transform"
               >
-                Send Message
+                {t('action.send_message')}
               </button>
             </div>
           </motion.div>
@@ -1640,22 +1667,20 @@ export default function App() {
             className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
           >
             <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
-              <h2 className="text-3xl font-black text-slate-900 mb-6">Privacy Policy</h2>
+              <h2 className="text-3xl font-black text-slate-900 mb-6">{t('page.privacy.title')}</h2>
               <div className="space-y-4 text-slate-600 text-sm leading-relaxed overflow-y-auto max-h-[400px] pr-2">
                 <p className="font-bold text-slate-800">1. Data Collection</p>
-                <p>We collect birth details (date, time, place) solely for the purpose of generating astrological reports. This data is processed locally and not shared with third parties.</p>
+                <p>{t('page.privacy.p1')}</p>
                 <p className="font-bold text-slate-800">2. Usage</p>
-                <p>Your data is used to calculate compatibility, planetary positions, and celestial recommendations.</p>
+                <p>{t('page.privacy.p2')}</p>
                 <p className="font-bold text-slate-800">3. Security</p>
-                <p>We implement industry-standard security measures to protect your personal information.</p>
-                <p className="font-bold text-slate-800">4. Cookies</p>
-                <p>We use minimal cookies to enhance your user experience and remember your preferences.</p>
+                <p>{t('page.privacy.p3')}</p>
               </div>
               <button 
                 onClick={() => setView('home')}
                 className="mt-8 w-full py-4 bg-slate-100 text-slate-800 font-bold rounded-full active:scale-95 transition-transform"
               >
-                Back to Home
+                {t('action.back_to_home')}
               </button>
             </div>
           </motion.div>
@@ -1671,20 +1696,20 @@ export default function App() {
             className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
           >
             <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
-              <h2 className="text-3xl font-black text-slate-900 mb-6">Terms of Service</h2>
+              <h2 className="text-3xl font-black text-slate-900 mb-6">{t('page.terms.title')}</h2>
               <div className="space-y-4 text-slate-600 text-sm leading-relaxed overflow-y-auto max-h-[400px] pr-2">
                 <p className="font-bold text-slate-800">1. Acceptance of Terms</p>
-                <p>By using Grid Astro, you agree to be bound by these terms. Our services are provided for informational and entertainment purposes only.</p>
+                <p>{t('page.terms.p1')}</p>
                 <p className="font-bold text-slate-800">2. Accuracy of Data</p>
-                <p>While we strive for high precision, astrological calculations are based on traditional interpretations and should not be used as a substitute for professional advice.</p>
+                <p>{t('page.terms.p2')}</p>
                 <p className="font-bold text-slate-800">3. User Responsibility</p>
-                <p>You are responsible for providing accurate birth details. We are not liable for any decisions made based on our reports.</p>
+                <p>{t('page.terms.p3')}</p>
               </div>
               <button 
                 onClick={() => setView('home')}
                 className="mt-8 w-full py-4 bg-slate-100 text-slate-800 font-bold rounded-full active:scale-95 transition-transform"
               >
-                Back to Home
+                {t('action.back_to_home')}
               </button>
             </div>
           </motion.div>
@@ -1700,12 +1725,12 @@ export default function App() {
             className="flex-1 px-4 max-w-xl mx-auto w-full pt-6 pb-24"
           >
             <div className="bg-white rounded-[40px] p-8 shadow-xl border border-slate-100">
-              <h2 className="text-3xl font-black text-slate-900 mb-6">Help Center</h2>
+              <h2 className="text-3xl font-black text-slate-900 mb-6">{t('page.help.title')}</h2>
               <div className="space-y-4">
                 {[
-                  { q: "How do I find my birth time?", a: "Check your birth certificate or consult with family members. Accuracy is key for precise charts." },
-                  { q: "What is Porutham?", a: "It's a traditional Keralite system for matching horoscopes based on 10 major compatibility factors." },
-                  { q: "Is my data secure?", a: "Yes, we process all calculations locally and do not store your personal birth details on our servers." }
+                  { q: t('page.help.q1'), a: t('page.help.a1') },
+                  { q: t('page.help.q2'), a: t('page.help.a2') },
+                  { q: t('page.help.q3'), a: t('page.help.a3') }
                 ].map((item) => (
                   <div key={item.q} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <p className="font-bold text-slate-800 text-sm mb-1">{item.q}</p>
@@ -1717,7 +1742,7 @@ export default function App() {
                 onClick={() => setView('home')}
                 className="mt-8 w-full py-4 bg-primary text-white font-bold rounded-full active:scale-95 transition-transform"
               >
-                Contact Support
+                {t('action.contact_support')}
               </button>
             </div>
           </motion.div>
@@ -1779,7 +1804,7 @@ export default function App() {
                   onClick={() => setSelectedExplanation(null)}
                   className="w-full mt-8 py-5 bg-primary text-on-primary rounded-[24px] font-bold uppercase tracking-widest text-xs shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
-                  Understood
+                  {t('action.understood')}
                 </button>
               </div>
             </motion.div>
@@ -1822,13 +1847,13 @@ export default function App() {
               
               <div className="flex-1 overflow-y-auto py-6">
                 <div className="px-4 mb-6">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Main Menu</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">{t('nav.main_menu')}</p>
                   <nav className="space-y-1">
                     {[
-                      { icon: 'home', label: 'Home', view: 'home' },
-                      { icon: 'favorite', label: 'Compatibility', view: 'form' },
-                      { icon: 'grid_view', label: 'Rashi Chart', view: 'chart' },
-                      { icon: 'auto_awesome', label: 'Janam Kundli', view: 'janam-kundli' },
+                      { icon: 'home', label: t('nav.home'), view: 'home' },
+                      { icon: 'favorite', label: t('nav.compatibility'), view: 'form' },
+                      { icon: 'grid_view', label: t('nav.rashi_chart'), view: 'chart' },
+                      { icon: 'auto_awesome', label: t('nav.janam_kundli'), view: 'janam-kundli' },
                     ].map((item) => (
                       <button
                         key={item.label}
@@ -1848,14 +1873,14 @@ export default function App() {
                 </div>
                 
                 <div className="px-4 mb-6">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Company</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">{t('nav.company')}</p>
                   <nav className="space-y-1">
                     {[
-                      { icon: 'info', label: 'About Us', view: 'about' },
-                      { icon: 'mail', label: 'Contact Us', view: 'contact' },
-                      { icon: 'help', label: 'Help Center', view: 'help' },
-                      { icon: 'policy', label: 'Privacy Policy', view: 'privacy' },
-                      { icon: 'gavel', label: 'Terms of Service', view: 'terms' },
+                      { icon: 'info', label: t('nav.about'), view: 'about' },
+                      { icon: 'mail', label: t('nav.contact'), view: 'contact' },
+                      { icon: 'help', label: t('nav.help'), view: 'help' },
+                      { icon: 'policy', label: t('nav.privacy'), view: 'privacy' },
+                      { icon: 'gavel', label: t('nav.terms'), view: 'terms' },
                     ].map((item) => (
                       <button
                         key={item.label}

@@ -7,9 +7,9 @@ interface RasiChartProps {
 }
 
 const RASI_ORDER = [
-  "Meena", "Mesha", "Rishabha", "Mithuna",
-  "Karkitaka", "Simha", "Kanya", "Tula",
-  "Vrischika", "Dhanu", "Makara", "Kumbha"
+  "Medam", "Edavam", "Mithunam", "Karkidakam",
+  "Chingam", "Kanni", "Thulam", "Vrischikam",
+  "Dhanu", "Makaram", "Kumbham", "Meenam"
 ];
 
 // South Indian Chart Layout Indices (0-11)
@@ -25,18 +25,31 @@ const CHART_LAYOUT = [
 ];
 
 const RASI_NAMES_MALAYALAM: Record<string, string> = {
-  "Mesha": "മേടം",
-  "Rishabha": "ഇടവം",
-  "Mithuna": "മിഥുനം",
-  "Karkitaka": "കർക്കിടകം",
-  "Simha": "ചിങ്ങം",
-  "Kanya": "കന്നി",
-  "Tula": "തുലാം",
-  "Vrischika": "വൃശ്ചികം",
+  "Medam": "മേടം",
+  "Edavam": "ഇടവം",
+  "Mithunam": "മിഥുനം",
+  "Karkidakam": "കർക്കിടകം",
+  "Chingam": "ചിങ്ങം",
+  "Kanni": "കന്നി",
+  "Thulam": "തുലാം",
+  "Vrischikam": "വൃശ്ചികം",
   "Dhanu": "ധനു",
-  "Makara": "മകരം",
-  "Kumbha": "കുംഭം",
-  "Meena": "മീനം"
+  "Makaram": "മകരം",
+  "Kumbham": "കുംഭം",
+  "Meenam": "മീനം"
+};
+
+const PLANET_ABBR: Record<string, string> = {
+  "സൂര്യൻ": "സൂ",
+  "ചന്ദ്രൻ": "ച",
+  "ചൊവ്വ": "ചൊ",
+  "ബുധൻ": "ബു",
+  "വ്യാഴം": "വ്യാ",
+  "ശുക്രൻ": "ശു",
+  "ശനി": "ശ",
+  "രാഹു": "രാ",
+  "കേതു": "കേ",
+  "ലഗ്നം": "ല"
 };
 
 export const RasiChart: React.FC<RasiChartProps> = ({ title, moonSign, planets = [] }) => {
@@ -47,37 +60,30 @@ export const RasiChart: React.FC<RasiChartProps> = ({ title, moonSign, planets =
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+    <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100">
       <h3 className="text-lg font-bold text-slate-800 mb-4 text-center">{title}</h3>
-      <div className="grid grid-cols-4 gap-0 border-2 border-slate-800 aspect-square max-w-[300px] mx-auto">
+      <div className="grid grid-cols-4 gap-0 border-2 border-slate-800 aspect-square w-full max-w-[340px] mx-auto">
         {CHART_LAYOUT.map((row, rowIndex) => (
           row.map((rasiIdx, colIndex) => {
             if (rasiIdx === -1) {
-              return <div key={`empty-${rowIndex}-${colIndex}`} className="bg-slate-50 border border-slate-200"></div>;
+              return <div key={`empty-${rowIndex}-${colIndex}`} className="bg-slate-50/50 border border-slate-200"></div>;
             }
             
-            const rasiName = RASI_ORDER.find((_, i) => {
-                // Map RASI_ORDER to the standard index
-                // RASI_ORDER is [Meena, Mesha, ...]
-                // Mesha is index 1 in RASI_ORDER, but index 0 in our logic?
-                // Let's simplify: RASI_ORDER[rasiIdx]
-                return i === rasiIdx;
-            }) || "";
-
+            const rasiName = RASI_ORDER.find((_, i) => i === rasiIdx) || "";
             const signPlanets = getPlanetsInSign(rasiName);
 
             return (
               <div 
                 key={rasiName} 
-                className="border border-slate-800 p-1 flex flex-col items-center justify-start min-h-[60px] relative"
+                className="border border-slate-800 p-1 flex flex-col items-center justify-center relative overflow-hidden"
               >
-                <span className="text-[10px] text-slate-400 absolute top-0.5 right-1">
+                <span className="text-[9px] sm:text-[10px] text-slate-400 absolute top-0.5 left-1">
                   {RASI_NAMES_MALAYALAM[rasiName]}
                 </span>
-                <div className="mt-4 flex flex-wrap justify-center gap-1">
+                <div className="mt-3 flex flex-wrap justify-center gap-1 sm:gap-1.5 px-0.5 w-full">
                   {signPlanets.map((p, i) => (
-                    <span key={i} className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1 rounded">
-                      {p}
+                    <span key={i} className="text-[11px] sm:text-xs font-bold text-indigo-700 leading-none">
+                      {PLANET_ABBR[p] || p}
                     </span>
                   ))}
                 </div>

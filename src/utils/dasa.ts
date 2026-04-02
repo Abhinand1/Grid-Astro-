@@ -35,9 +35,12 @@ const NAKSHATRA_LORDS: Record<number, string> = {
 };
 
 export function calculateDasaTimeline(starId: number, dob: string): DasaPeriod[] {
-  const birthDate = new Date(dob);
-  const startLord = NAKSHATRA_LORDS[starId];
-  const startIndex = DASA_ORDER.findIndex(d => d.planet === startLord);
+  let birthDate = new Date(dob);
+  if (isNaN(birthDate.getTime())) {
+    birthDate = new Date(); // Fallback to current date if invalid
+  }
+  const startLord = NAKSHATRA_LORDS[starId] || 'Ketu';
+  const startIndex = Math.max(0, DASA_ORDER.findIndex(d => d.planet === startLord));
   
   const timeline: DasaPeriod[] = [];
   let currentDate = new Date(birthDate);

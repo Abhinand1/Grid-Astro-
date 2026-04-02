@@ -33,7 +33,7 @@ export function CustomSelect({ options, value, onChange, placeholder = 'Select a
         return;
       }
       const rect = selectRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom - 16; // 16px padding
+      const spaceBelow = window.innerHeight - rect.bottom - 16;
       const spaceAbove = rect.top - 16;
       
       if (spaceBelow < 250 && spaceAbove > spaceBelow) {
@@ -44,7 +44,7 @@ export function CustomSelect({ options, value, onChange, placeholder = 'Select a
         setMaxHeight(Math.min(320, spaceBelow));
       }
     }
-  }, [isOpen]);
+  }, [isOpen, forceDirection]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,6 +58,21 @@ export function CustomSelect({ options, value, onChange, placeholder = 'Select a
 
   return (
     <div className={`relative ${className}`} ref={selectRef}>
+      {/* Native select overlay for touch devices - completely solves clipping and scroll issues */}
+      <select
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 sm:hidden"
+        value={value}
+        onChange={(e) => {
+          haptic.light();
+          onChange(e.target.value);
+        }}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+
       <button
         type="button"
         onClick={() => { haptic.light(); setIsOpen(!isOpen); }}
@@ -72,14 +87,15 @@ export function CustomSelect({ options, value, onChange, placeholder = 'Select a
         <ChevronDown size={18} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
+      {/* Custom dropdown for desktop */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: openUpwards ? 10 : -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: openUpwards ? 10 : -10 }}
             transition={{ duration: 0.15 }}
-            className={`absolute z-[100] w-full bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden overflow-y-auto ${
+            className={`hidden sm:block absolute z-[100] w-full bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden overflow-y-auto ${
               openUpwards ? 'bottom-full mb-2' : 'top-full mt-2'
             }`}
             style={{ maxHeight: `${maxHeight}px` }}

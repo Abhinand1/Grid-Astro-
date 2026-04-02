@@ -24,8 +24,14 @@ export interface IndepthReport {
 }
 
 function parseDate(dob: string, time: string): Date {
+  if (!dob || !time) return new Date(); // Fallback to current date if missing
   const [year, month, day] = dob.split('-').map(Number);
   const [hours, minutes] = time.split(':').map(Number);
+  
+  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
+    return new Date(); // Fallback to current date if invalid
+  }
+  
   // Assuming IST (+05:30)
   return new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
 }

@@ -2,8 +2,17 @@ import * as Astronomy from 'astronomy-engine';
 import { NAKSHATRAS, RASIS } from './astroData';
 
 export function getAyanamsa(date: Date): number {
-  const year = date.getUTCFullYear() + date.getUTCMonth() / 12 + date.getUTCDate() / 365;
-  return 23.853 + (year - 2000) * (50.29 / 3600);
+  // Precise Lahiri (Chitra Paksha) Ayanamsa calculation
+  const j2000 = new Date(Date.UTC(2000, 0, 1, 12, 0, 0));
+  const daysSinceJ2000 = (date.getTime() - j2000.getTime()) / (1000 * 60 * 60 * 24);
+  const yearsSinceJ2000 = daysSinceJ2000 / 365.25;
+  
+  // Base Lahiri Ayanamsa at J2000.0 is 23° 51' 11" = 23.8530555
+  const baseAyanamsa = 23.8530555;
+  // Precession rate is approx 50.290966 arcseconds per year
+  const precessionRate = 50.290966 / 3600;
+  
+  return baseAyanamsa + (yearsSinceJ2000 * precessionRate);
 }
 
 export function getPlanetSiderealLongitude(planet: Astronomy.Body | 'Rahu' | 'Ketu', date: Date = new Date()): number {

@@ -414,6 +414,7 @@ export default function App() {
         <header className="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100/50 shadow-sm flex justify-between items-center px-6 h-14 shrink-0 font-['Plus_Jakarta_Sans'] font-medium">
         <div className="flex items-center gap-3">
           <button 
+            aria-label={view === 'home' ? 'Open menu' : 'Go back'}
             onClick={() => {
               haptic.light();
               if (view === 'home') {
@@ -1131,6 +1132,7 @@ export default function App() {
                 {/* Floating Action Button for detailed report */}
                 <div className="fixed bottom-24 right-6 z-40">
                   <button 
+                    aria-label="Back to analysis"
                     onClick={() => { haptic.light(); setView('analysis'); }}
                     className="w-14 h-14 bg-gradient-to-tr from-primary to-primary-container rounded-full shadow-lg shadow-primary/30 flex items-center justify-center text-white active:scale-90 transition-transform duration-150"
                   >
@@ -1779,6 +1781,7 @@ export default function App() {
                     <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-1">{selectedExplanation.title}</p>
                   </div>
                   <button 
+                    aria-label="Close explanation"
                     onClick={() => setSelectedExplanation(null)}
                     className="p-2 rounded-2xl bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors"
                   >
@@ -1838,6 +1841,7 @@ export default function App() {
                   <span>Grid</span><span>Astro</span>
                 </div>
                 <button 
+                  aria-label="Close menu"
                   onClick={() => setIsMenuOpen(false)}
                   className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
                 >
@@ -2123,6 +2127,7 @@ export default function App() {
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                 <h3 className="text-xl font-bold text-slate-800">Muhurtham Calendar</h3>
                 <button 
+                  aria-label="Close calendar"
                   onClick={() => setIsMuhurthamCalendarOpen(false)}
                   className="w-8 h-8 rounded-full bg-slate-200/50 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
                 >

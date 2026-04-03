@@ -71,6 +71,7 @@ export function DailyHoroscopeModal({ isOpen, onClose }: DailyHoroscopeModalProp
         >
           <div className="bg-gradient-to-r from-primary to-primary-container p-6 text-white relative rounded-t-3xl shrink-0">
             <button 
+              aria-label="Close horoscope modal"
               onClick={() => { haptic.light(); onClose(); }}
               className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
             >

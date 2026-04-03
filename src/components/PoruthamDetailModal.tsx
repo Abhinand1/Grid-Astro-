@@ -36,6 +36,7 @@ export function PoruthamDetailModal({ isOpen, onClose, porutham, icon }: Porutha
             porutham.status === 'Adhamam' ? 'bg-red-50' : 'bg-orange-50'
           }`}>
             <button 
+              aria-label="Close details"
               onClick={() => { haptic.light(); onClose(); }}
               className="absolute top-4 right-4 p-2 bg-white/50 hover:bg-white/80 rounded-full transition-colors"
             >

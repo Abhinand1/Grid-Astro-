@@ -38,6 +38,7 @@ export function PoruthamDetailModal({ isOpen, onClose, porutham, icon }: Porutha
             <button 
               onClick={() => { haptic.light(); onClose(); }}
               className="absolute top-4 right-4 p-2 bg-white/50 hover:bg-white/80 rounded-full transition-colors"
+              aria-label="Close details"
             >
               <X size={20} className="text-slate-700" />
             </button>

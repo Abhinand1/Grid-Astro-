@@ -428,6 +428,7 @@ export default function App() {
               else setView('home');
             }}
             className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
+            aria-label={view === 'home' ? 'Open menu' : 'Go back'}
           >
             <span className="material-symbols-outlined text-slate-700 text-[22px]">
               {view === 'home' ? 'menu' : 'arrow_back'}
@@ -447,6 +448,7 @@ export default function App() {
               setLang(lang === 'en' ? 'ml' : 'en');
             }}
             className="px-2 py-1 text-[10px] font-bold text-primary bg-primary/10 rounded-md uppercase tracking-wider"
+            aria-label={`Switch language to ${lang === 'en' ? 'Malayalam' : 'English'}`}
           >
             {lang === 'en' ? 'മലയാളം' : 'EN'}
           </button>
@@ -1133,6 +1135,7 @@ export default function App() {
                   <button 
                     onClick={() => { haptic.light(); setView('analysis'); }}
                     className="w-14 h-14 bg-gradient-to-tr from-primary to-primary-container rounded-full shadow-lg shadow-primary/30 flex items-center justify-center text-white active:scale-90 transition-transform duration-150"
+                    aria-label="Back to analysis"
                   >
                     <span className="material-symbols-outlined text-2xl">arrow_back</span>
                   </button>
@@ -1781,6 +1784,7 @@ export default function App() {
                   <button 
                     onClick={() => setSelectedExplanation(null)}
                     className="p-2 rounded-2xl bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors"
+                    aria-label="Close explanation"
                   >
                     <span className="material-symbols-outlined">close</span>
                   </button>
@@ -1840,6 +1844,7 @@ export default function App() {
                 <button 
                   onClick={() => setIsMenuOpen(false)}
                   className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
+                  aria-label="Close menu"
                 >
                   <span className="material-symbols-outlined text-slate-500">close</span>
                 </button>
@@ -2125,6 +2130,7 @@ export default function App() {
                 <button 
                   onClick={() => setIsMuhurthamCalendarOpen(false)}
                   className="w-8 h-8 rounded-full bg-slate-200/50 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+                  aria-label="Close calendar"
                 >
                   <X size={18} />
                 </button>

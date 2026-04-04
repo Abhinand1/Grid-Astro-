@@ -162,6 +162,13 @@ export default function App() {
   };
 
   const handleIndepthCheck = async () => {
+    if (!boyDetails.time || !girlDetails.time) {
+      // Use existing alert pattern but maybe we should show an inline error message for better UX?
+      // For now, keeping as alert as standard to app but improving the text
+      alert("Please provide the exact birth time for both partners to generate an accurate In-Depth Analysis (Papasamyam and Dasa Sandhi require precise Moon and Venus degrees).");
+      return;
+    }
+
     setIsLoadingIndepth(true);
     try {
       const result = await astroWorker.calculateIndepth(boyDetails, girlDetails);
@@ -891,6 +898,20 @@ export default function App() {
               {/* Detailed Breakdown */}
               <section className="space-y-4 mt-8">
                 <h2 className="text-xl font-bold px-1">{t('result.porutham')}</h2>
+
+                {/* VETO Dosha Alerts */}
+                {matchResult && (matchResult.results.find(r => r.name === 'Rajju')?.status === 'Adhamam' || matchResult.results.find(r => r.name === 'Vedha')?.status === 'Adhamam') && (
+                  <div className="bg-error-container/20 border-2 border-error/30 rounded-3xl p-5 mb-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="material-symbols-outlined text-error text-2xl">warning</span>
+                      <h3 className="font-bold text-error text-lg">Critical Match Failure</h3>
+                    </div>
+                    <p className="text-error/90 text-sm leading-relaxed">
+                      This match fails mandatory conditions (Rajju or Vedha Dosham). It is highly discouraged regardless of the total score.
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid gap-4">
                   {matchResult && matchResult.results.map((res, idx) => (
                     <div 

@@ -114,11 +114,17 @@ function calculateDasaSandhi(boyDate: Date, girlDate: Date, boyStarId: number, g
     const dasaIndex = (starId - 1) % 9;
     const currentDasaYears = dasaYears[dasaIndex];
     
-    // Approximate remaining dasa at birth (randomized based on star for this demo, 
-    // real calculation needs exact moon longitude within the star)
-    // Let's use a deterministic fraction based on the date so it's consistent.
-    const fraction = (birthDate.getTime() % 1000) / 1000; 
-    let remainingYears = currentDasaYears * (0.1 + fraction * 0.8); // 10% to 90%
+    // Real calculation: exact moon longitude within the star (13°20' = 13.3333°)
+    const moonLon = getPlanetSiderealLongitude(Astronomy.Body.Moon, birthDate);
+    const starStartLon = (starId - 1) * (360 / 27);
+    let degreesPassed = moonLon - starStartLon;
+    if (degreesPassed < 0) degreesPassed += 360; // Just in case
+
+    const fractionRemaining = 1 - (degreesPassed / (360 / 27));
+    // Ensure fraction is between 0 and 1
+    const safeFraction = Math.max(0, Math.min(1, fractionRemaining));
+
+    let remainingYears = currentDasaYears * safeFraction;
     
     const endAges = [];
     let currentAge = remainingYears;
@@ -177,8 +183,11 @@ export async function calculateIndepth(boy: any, girl: any): Promise<IndepthRepo
   
   // Madhamaranju is a specific dosha when certain stars marry.
   // E.g., Makam and Pooram, etc. We'll use a deterministic mock for this one.
-  const combined = boyStarId + girlStarId;
-  const hasMadhamaranju = combined % 7 === 0;
+  // Madhamaranju dosha rule in Kerala: When Makam marries Pooram, etc.
+  // Actually, standard Madhamaranju occurs in certain specific pairs like Makam-Pooram, Aswathi-Bharani, etc.
+  // For precise Kerala logic, we flag specific adjacent star pairs from same Rasi.
+  const hasMadhamaranju = Math.abs(boyStarId - girlStarId) === 1 &&
+    (Math.floor((boyStarId - 1) / 2.25) === Math.floor((girlStarId - 1) / 2.25));
 
   let recommendation = '';
   if (isPapasamyamCompatible && !hasChovvaDosham && !hasDasaSandhi) {

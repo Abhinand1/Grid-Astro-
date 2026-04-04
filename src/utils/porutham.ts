@@ -67,19 +67,24 @@ function checkDina(girlStar: Nakshatra, boyStar: Nakshatra): PoruthamResult {
   };
 
   const evaluateRemainder = (rem: number) => {
-    if ([2, 4, 6, 8, 0].includes(rem)) return 'Good';
+    // Dina porutham remainders: 2, 4, 6, 8 are good.
+    // 0 (remainder 9) is bad in Kerala astrology.
+    if ([2, 4, 6, 8].includes(rem)) return 'Good';
     return 'Bad';
   };
 
+  // Distance from Girl to Boy
   const countGtoB = getCount(girlStar.id, boyStar.id);
   const remGtoB = countGtoB % 9;
   const resGtoB = evaluateRemainder(remGtoB);
 
+  // Distance from Boy to Girl
   const countBtoG = getCount(boyStar.id, girlStar.id);
   const remBtoG = countBtoG % 9;
   const resBtoG = evaluateRemainder(remBtoG);
 
   let status: 'Uthamam' | 'Madhyamam' | 'Adhamam' = 'Adhamam';
+  // Check both directions
   if (resGtoB === 'Good' && resBtoG === 'Good') status = 'Uthamam';
   else if (resGtoB === 'Good' || resBtoG === 'Good') status = 'Madhyamam';
 
@@ -89,7 +94,7 @@ function checkDina(girlStar: Nakshatra, boyStar: Nakshatra): PoruthamResult {
     status,
     score: status === 'Uthamam' ? 1 : (status === 'Madhyamam' ? 0.5 : 0),
     maxScore: 1,
-    description: `G->B count: ${countGtoB} (Rem ${remGtoB}). B->G count: ${countBtoG} (Rem ${remBtoG}).`
+    description: `Girl to Boy: Rem ${remGtoB || 9} (${resGtoB}). Boy to Girl: Rem ${remBtoG || 9} (${resBtoG}).`
   };
 }
 
@@ -196,6 +201,7 @@ function checkMahendra(girlStar: Nakshatra, boyStar: Nakshatra): PoruthamResult 
   let count = boyStar.id - girlStar.id + 1;
   if (count <= 0) count += 27;
 
+  // Mahendra Porutham uthamam counts: 4, 7, 10, 13, 16, 19, 22, 25
   const goodCounts = [4, 7, 10, 13, 16, 19, 22, 25];
   const isPresent = goodCounts.includes(count);
 
@@ -211,7 +217,8 @@ function checkMahendra(girlStar: Nakshatra, boyStar: Nakshatra): PoruthamResult 
 
 // 8. STREE DEERGHA PORUTHAM
 function checkStreeDeergha(girlStar: Nakshatra, boyStar: Nakshatra): PoruthamResult {
-  let count = girlStar.id - boyStar.id + 1;
+  // Distance from Girl to Boy star should be more than 13
+  let count = boyStar.id - girlStar.id + 1;
   if (count <= 0) count += 27;
 
   const isGood = count >= 13;
@@ -222,7 +229,7 @@ function checkStreeDeergha(girlStar: Nakshatra, boyStar: Nakshatra): PoruthamRes
     status: isGood ? 'Uthamam' : 'Adhamam',
     score: isGood ? 1 : 0,
     maxScore: 1,
-    description: `Count from Boy to Girl is ${count}.`
+    description: `Count from Girl to Boy is ${count}.`
   };
 }
 

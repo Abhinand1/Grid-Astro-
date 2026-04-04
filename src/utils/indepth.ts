@@ -36,11 +36,11 @@ function parseDate(dob: string, time: string): Date {
   return new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
 }
 
-function getRasi(longitude: number): number {
+export function getRasi(longitude: number): number {
   return Math.floor(longitude / 30);
 }
 
-function getHouse(planetRasi: number, referenceRasi: number): number {
+export function getHouse(planetRasi: number, referenceRasi: number): number {
   let house = planetRasi - referenceRasi + 1;
   if (house <= 0) house += 12;
   return house;

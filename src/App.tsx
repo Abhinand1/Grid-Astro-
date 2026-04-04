@@ -174,7 +174,7 @@ export default function App() {
       
       setView('analysis');
     } catch (error) {
-      console.error(error);
+      console.error('An error occurred during calculation.');
       alert("വിശദമായ പരിശോധന പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക. (Failed to calculate in-depth report. Please try again.)");
     } finally {
       setIsLoadingIndepth(false);
@@ -231,7 +231,7 @@ export default function App() {
       
       pdf.save(`Grid_Astro_Report_${boyDetails.name || 'Boy'}_${girlDetails.name || 'Girl'}.pdf`);
     } catch (error) {
-      console.error('PDF Error:', error);
+      console.error('An error occurred during PDF generation.');
       alert('PDF നിർമ്മാണത്തിൽ തകരാർ സംഭവിച്ചു. (Failed to generate PDF.)');
     } finally {
       // Always hide it back

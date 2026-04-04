@@ -45,7 +45,7 @@ export function DailyHoroscopeModal({ isOpen, onClose }: DailyHoroscopeModalProp
       setCurrentPlanets(planets);
       haptic.success();
     } catch (err) {
-      console.error(err);
+      console.error('An error occurred calculating the horoscope.');
       setError('Failed to calculate daily horoscope. Please try again later.');
       haptic.error();
     } finally {

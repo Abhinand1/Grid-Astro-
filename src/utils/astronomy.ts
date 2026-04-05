@@ -70,6 +70,31 @@ export function calculateDailyHoroscope(janmaStarId: number, date: Date = new Da
 
   const janmaRasiIndex = RASIS.findIndex(r => r.name === janmaStar.defaultRashi);
   const currentRasiIndex = getCurrentRasiIndex(date);
+  const currentNakshatraIndex = getCurrentNakshatraIndex(date);
+
+  // Tarabalam logic
+  let taraCount = currentNakshatraIndex + 1 - janmaStarId + 1;
+  if (taraCount <= 0) taraCount += 27;
+  const taraRem = taraCount % 9;
+
+  // 1: Janma, 2: Sampath, 3: Vipat, 4: Kshema, 5: Pratyak, 6: Sadhaka, 7: Nidhana, 8: Mitra, 0(9): Parama Mitra
+  const isTaraGood = [2, 4, 6, 8, 0].includes(taraRem);
+
+  // Ashtama Shani and Kuja Ashtamam checks
+  const saturnLon = getPlanetSiderealLongitude(Astronomy.Body.Saturn, date);
+  const marsLon = getPlanetSiderealLongitude(Astronomy.Body.Mars, date);
+  const saturnRasi = Math.floor(saturnLon / 30);
+  const marsRasi = Math.floor(marsLon / 30);
+
+  let saturnTransit = saturnRasi - janmaRasiIndex + 1;
+  if (saturnTransit <= 0) saturnTransit += 12;
+
+  let marsTransit = marsRasi - janmaRasiIndex + 1;
+  if (marsTransit <= 0) marsTransit += 12;
+
+  const isAshtamaShani = saturnTransit === 8;
+  const isKujaAshtamam = marsTransit === 8;
+  const isSadeSati = [12, 1, 2].includes(saturnTransit);
 
   let transitHouse = currentRasiIndex - janmaRasiIndex + 1;
   if (transitHouse <= 0) transitHouse += 12;
@@ -217,6 +242,28 @@ export function calculateDailyHoroscope(janmaStarId: number, date: Date = new Da
       remedy = 'Listen to calming music.';
       remedyMalayalam = 'ശാന്തമായ സംഗീതം കേൾക്കുക.';
       break;
+  }
+
+  if (isAshtamaShani) {
+    status = 'Bad (Ashtama Shani)';
+    statusMalayalam = 'മോശം (അഷ്ടമ ശനി)';
+    prediction += ' Beware of Ashtama Shani period. Exercise extra caution.';
+    predictionMalayalam += ' അഷ്ടമ ശനി കാലമാണ്. കൂടുതൽ ശ്രദ്ധിക്കുക.';
+  } else if (isKujaAshtamam) {
+    status = 'Bad (Kuja Ashtamam)';
+    statusMalayalam = 'മോശം (കുജാഷ്ടമം)';
+    prediction += ' Kuja Ashtamam. Avoid arguments and rash driving.';
+    predictionMalayalam += ' കുജാഷ്ടമം. തർക്കങ്ങളും അശ്രദ്ധമായ ഡ്രൈവിംഗും ഒഴിവാക്കുക.';
+  } else if (isSadeSati) {
+    prediction += ' You are in Sade Sati period (ഏഴര ശനി).';
+    predictionMalayalam += ' നിങ്ങൾ ഏഴര ശനി കാലഘട്ടത്തിലാണ്.';
+  }
+
+  if (!isTaraGood && status !== 'Very Bad') {
+     status = 'Average';
+     statusMalayalam = 'സാധാരണം (താരാബലം കുറവ്)';
+     prediction += ' Tarabalam is weak today.';
+     predictionMalayalam += ' ഇന്ന് താരാബലം കുറവാണ്.';
   }
 
   return {

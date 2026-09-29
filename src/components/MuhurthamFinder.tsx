@@ -7,7 +7,7 @@ interface MuhurthamFinderProps {
   muhurthams: MuhurthamDate[];
 }
 
-export function MuhurthamFinder({ muhurthams }: MuhurthamFinderProps) {
+export const MuhurthamFinder = React.memo(function MuhurthamFinder({ muhurthams }: MuhurthamFinderProps) {
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
       <div className="flex items-center gap-3 mb-6">
@@ -61,4 +61,4 @@ export function MuhurthamFinder({ muhurthams }: MuhurthamFinderProps) {
       </div>
     </div>
   );
-}
+});

@@ -1,4 +1,6 @@
+import * as Astronomy from 'astronomy-engine';
 import { NAKSHATRAS } from './astroData';
+import { getPlanetSiderealLongitude } from './astronomy';
 
 export interface DasaPeriod {
   planet: string;
@@ -8,6 +10,7 @@ export interface DasaPeriod {
   endDate: Date;
   startYear: string;
   endYear: string;
+  isBalancePeriod?: boolean;
 }
 
 const DASA_ORDER = [
@@ -34,37 +37,75 @@ const NAKSHATRA_LORDS: Record<number, string> = {
   9: 'Mercury', 18: 'Mercury', 27: 'Mercury',
 };
 
-export function calculateDasaTimeline(starId: number, dob: string): DasaPeriod[] {
+export function calculateDasaTimeline(
+  starId: number, 
+  dob: string, 
+  time?: string, 
+  pada?: number
+): DasaPeriod[] {
   let birthDate = new Date(dob);
   if (isNaN(birthDate.getTime())) {
-    birthDate = new Date(); // Fallback to current date if invalid
+    birthDate = new Date();
   }
+  if (time) {
+    const [h, m] = time.split(':').map(Number);
+    if (!isNaN(h) && !isNaN(m)) {
+      birthDate.setHours(h, m, 0, 0);
+    }
+  }
+
   const startLord = NAKSHATRA_LORDS[starId] || 'Ketu';
   const startIndex = Math.max(0, DASA_ORDER.findIndex(d => d.planet === startLord));
   
+  // Calculate Dasa Balance (ദശാശിഷ്ടം - Dasa Sesham) at birth
+  // Each Nakshatra spans 13°20' (13.333333°). Balance is the remaining arc of the birth star.
+  let remainingFraction = 0.5;
+  try {
+    const moonLon = getPlanetSiderealLongitude(Astronomy.Body.Moon, birthDate);
+    const starSpan = 360 / 27; // 13.333333°
+    const degreesInStar = ((moonLon % starSpan) + starSpan) % starSpan;
+    const traversed = degreesInStar / starSpan;
+    if (traversed >= 0 && traversed <= 1) {
+      remainingFraction = Math.max(0.05, 1 - traversed);
+    }
+  } catch {
+    if (pada && pada >= 1 && pada <= 4) {
+      remainingFraction = Math.max(0.05, 1 - ((pada - 0.5) * 0.25));
+    } else {
+      remainingFraction = 0.5;
+    }
+  }
+
   const timeline: DasaPeriod[] = [];
   let currentDate = new Date(birthDate);
-
-  // For simplicity, we assume the birth happens at the start of the Dasa.
-  // In real astrology, we calculate the balance Dasa based on the Moon's longitude.
-  // Here we'll show the full sequence starting from the birth Dasa.
 
   for (let i = 0; i < DASA_ORDER.length; i++) {
     const index = (startIndex + i) % DASA_ORDER.length;
     const dasa = DASA_ORDER[index];
     
     const startDate = new Date(currentDate);
-    const endDate = new Date(currentDate);
-    endDate.setFullYear(endDate.getFullYear() + dasa.years);
+    let durationYears = dasa.years;
+    let isBalance = false;
+
+    if (i === 0) {
+      // First Dasa has Dasa Sesham (remaining balance)
+      durationYears = Number((dasa.years * remainingFraction).toFixed(1));
+      if (durationYears <= 0.1) durationYears = 0.5;
+      isBalance = true;
+    }
+
+    const durationDays = durationYears * 365.2425;
+    const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
     
     timeline.push({
       planet: dasa.planet,
       malayalamPlanet: dasa.malayalam,
-      duration: dasa.years,
+      duration: durationYears,
       startDate,
       endDate,
       startYear: startDate.getFullYear().toString(),
       endYear: endDate.getFullYear().toString(),
+      isBalancePeriod: isBalance
     });
     
     currentDate = new Date(endDate);

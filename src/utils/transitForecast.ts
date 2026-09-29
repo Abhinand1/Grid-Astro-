@@ -117,31 +117,31 @@ export function calculateTransitForecast(input: TransitForecastInput): TransitRe
   let ketuHouse = ketuRasiIdx - input.moonRasiIndex + 1;
   if (ketuHouse <= 0) ketuHouse += 12;
 
-  // Determine Sade Sati status
+  // Determine Ezharashani status
   let sadeSatiStatus: SadeSatiStatus = 'none';
-  let sadeSatiTitleEn = 'Free of Sade Sati';
+  let sadeSatiTitleEn = 'Free of Ezharashani';
   let sadeSatiTitleMl = 'ഏഴരശ്ശനി ദോഷമില്ല';
   let saturnDescEn = '';
   let saturnDescMl = '';
 
   if (saturnHouse === 12) {
     sadeSatiStatus = 'rising';
-    sadeSatiTitleEn = 'Sade Sati - Rising Phase (1st Dhaiya)';
+    sadeSatiTitleEn = 'Ezharashani - Rising Phase (12th House)';
     sadeSatiTitleMl = 'ഏഴരശ്ശനി ആരംഭം (ആദ്യ ഘട്ടം - 12-ൽ)';
-    saturnDescEn = 'Saturn transits the 12th house from your Moon sign. This marks the beginning of the 7.5-year cycle, urging restraint in expenses, caution in travel, and mental discipline.';
-    saturnDescMl = 'ശനി ചന്ദ്രന്റെ 12-ാം ഭാവത്തിൽ സഞ്ചരിക്കുന്നു. ഏഴരശ്ശrecordsിയുടെ ആദ്യ ഘട്ടമായതിനാൽ അനാവശ്യ ചിലവുകൾ നിയന്ത്രിക്കാനും ആരോഗ്യത്തിലും യാത്രകളിലും കൂടുതൽ ജാഗ്രത പുലർത്താനും ശ്രദ്ധിക്കുക.';
+    saturnDescEn = 'Saturn transits the 12th house from your Moon sign. This marks the beginning of the 7.5-year cycle (Ezharashani), urging restraint in expenses, caution in travel, and mental discipline.';
+    saturnDescMl = 'ശനി ചന്ദ്രന്റെ 12-ാം ഭാവത്തിൽ സഞ്ചരിക്കുന്നു. ഏഴരശ്ശനിയുടെ ആദ്യ ഘട്ടമായതിനാൽ അനാവശ്യ ചിലവുകൾ നിയന്ത്രിക്കാനും ആരോഗ്യത്തിലും യാത്രകളിലും കൂടുതൽ ജാഗ്രത പുലർത്താനും ശ്രദ്ധിക്കുക.';
   } else if (saturnHouse === 1) {
     sadeSatiStatus = 'peak';
-    sadeSatiTitleEn = 'Sade Sati - Peak Phase (Janma Shani)';
+    sadeSatiTitleEn = 'Janma Shani - Core Phase (In Moon Sign)';
     sadeSatiTitleMl = 'ജന്മശനി (ഏഴരശ്ശനി ഉച്ചസ്ഥായി - ജന്മത്തിൽ)';
     saturnDescEn = 'Saturn is directly transiting over your natal Moon sign. Known as Janma Shani, this period demands steadfast patience, resilience against emotional strain, and humility.';
     saturnDescMl = 'ശനി ജന്മരാശിയിൽ കൂടി സഞ്ചരിക്കുന്ന കാലഘട്ടമാണ്. ജോലിയിലും ജീവിതത്തിലും ക്ഷമയും വിവേകവും പാലിച്ച് മുന്നോട്ടു പോകേണ്ട സമയമാണ്.';
   } else if (saturnHouse === 2) {
     sadeSatiStatus = 'setting';
-    sadeSatiTitleEn = 'Sade Sati - Setting Phase (Final Dhaiya)';
+    sadeSatiTitleEn = 'Ezharashani - Setting Phase (2nd House)';
     sadeSatiTitleMl = 'ഏഴരശ്ശനി സമാപന ഘട്ടം (രണ്ടിൽ ശനി)';
     saturnDescEn = 'Saturn transits the 2nd house from your Moon sign. The intensity of previous years subsides, clearing past burdens and stabilizing family life and finances.';
-    saturnDescMl = 'ശനി രണ്ടാം ഭാവത്തിൽ സഞ്ചരിക്കുന്നു. ഏഴരശ്ശrecordsിയുടെ അവസാന ഘട്ടമായതിനാൽ മുൻകാല പ്രതിസന്ധികൾക്ക് അയവുണ്ടാകുകയും ക്രമേണ സമാധാനം കൈവരുകയും ചെയ്യും.';
+    saturnDescMl = 'ശനി രണ്ടാം ഭാവത്തിൽ സഞ്ചരിക്കുന്നു. ഏഴരശ്ശനിയുടെ അവസാന ഘട്ടമായതിനാൽ മുൻകാല പ്രതിസന്ധികൾക്ക് അയവുണ്ടാകുകയും ക്രമേണ സമാധാനം കൈവരുകയും ചെയ്യും.';
   } else if (saturnHouse === 8) {
     sadeSatiStatus = 'ashtama';
     sadeSatiTitleEn = 'Ashtama Shani (Saturn in 8th)';

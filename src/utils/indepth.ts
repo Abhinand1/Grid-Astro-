@@ -78,7 +78,7 @@ export async function calculateIndepth(boy: any, girl: any): Promise<IndepthRepo
     madhamaranju: {
       hasIssue: hasMadhamaranju,
       description: hasMadhamaranju
-        ? 'മദമറഞ്ഞു ദോഷം കാണുന്നു (Madhamaranju Dosha: Magha-Purva Phalguni friction).'
+        ? 'മദമറഞ്ഞു ദോഷം കാണുന്നു (Madhamaranju Dosha: Makam-Pooram friction).'
         : 'മദമറഞ്ഞു ദോഷം ഇല്ല (No Madhamaranju dosha detected).'
     },
     overallRecommendation: report.final_verdict.summary,

@@ -18,8 +18,8 @@ const astroWorker = {
   ) => {
     return calculatePorutham(girlStarId, boyStarId, girlPada, boyPada, girlRasi, boyRasi);
   },
-  calculateDasaTimeline: (starId: number, dob: string) => {
-    return calculateDasaTimeline(starId, dob);
+  calculateDasaTimeline: (starId: number, dob: string, time?: string, pada?: number) => {
+    return calculateDasaTimeline(starId, dob, time, pada);
   },
   findMuhurthams: (girlStarId: number, boyStarId: number) => {
     return findMuhurthams(girlStarId, boyStarId);

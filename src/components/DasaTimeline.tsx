@@ -9,7 +9,7 @@ interface DasaTimelineProps {
   color: 'blue' | 'pink';
 }
 
-export function DasaTimeline({ title, timeline, color }: DasaTimelineProps) {
+export const DasaTimeline = React.memo(function DasaTimeline({ title, timeline, color }: DasaTimelineProps) {
   const accentColor = color === 'pink' ? 'bg-pink-500' : 'bg-blue-500';
   const textColor = color === 'pink' ? 'text-pink-600' : 'text-blue-600';
   const bgColor = color === 'pink' ? 'bg-pink-50' : 'bg-blue-50';
@@ -52,7 +52,7 @@ export function DasaTimeline({ title, timeline, color }: DasaTimelineProps) {
                     {period.malayalamPlanet} ({period.planet})
                   </h4>
                   <span className="text-xs font-bold bg-white px-2 py-1 rounded-lg shadow-sm text-slate-500">
-                    {period.duration} Years
+                    {period.duration} {period.isBalancePeriod ? 'വർഷം (ശിഷ്ടം)' : 'വർഷം'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
@@ -72,4 +72,4 @@ export function DasaTimeline({ title, timeline, color }: DasaTimelineProps) {
       </div>
     </div>
   );
-}
+});

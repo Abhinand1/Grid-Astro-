@@ -28,6 +28,14 @@ import { TransitForecastView } from './components/TransitForecastView';
 import { BhoomiPujaView } from './components/BhoomiPujaView';
 import { EarlyLifeSamskarasView } from './components/EarlyLifeSamskarasView';
 import { VyaparMuhurthamView } from './components/VyaparMuhurthamView';
+import { CareerVocationalView } from './components/CareerVocationalView';
+import { MedicalAstrologyView } from './components/MedicalAstrologyView';
+import { FinancialWealthView } from './components/FinancialWealthView';
+import { RemedialPrescriptionsView } from './components/RemedialPrescriptionsView';
+import { YatraMuhurthamView } from './components/YatraMuhurthamView';
+import { SpiritualInitiationView } from './components/SpiritualInitiationView';
+import { LitigationStrategyView } from './components/LitigationStrategyView';
+import { AstrometeorologyView } from './components/AstrometeorologyView';
 import { CustomSelect } from './components/CustomSelect';
 import { CustomDatePicker } from './components/CustomDatePicker';
 import { CustomTimePicker } from './components/CustomTimePicker';
@@ -62,6 +70,14 @@ type ViewState =
   | 'bhoomi-puja' 
   | 'early-life-samskaras' 
   | 'vyapar-muhurtham' 
+  | 'career-vocational'
+  | 'medical-astrology'
+  | 'financial-wealth'
+  | 'remedial-prescriptions'
+  | 'yatra-muhurtham'
+  | 'spiritual-initiation'
+  | 'litigation-strategy'
+  | 'astrometeorology'
   | 'about' 
   | 'privacy' 
   | 'contact' 
@@ -136,8 +152,8 @@ export default function App() {
   useEffect(() => {
     if (boyDetails.starId && girlDetails.starId) {
       const fetchDasaAndMuhurthams = async () => {
-        const bd = await astroWorker.calculateDasaTimeline(boyDetails.starId, boyDetails.dob);
-        const gd = await astroWorker.calculateDasaTimeline(girlDetails.starId, girlDetails.dob);
+        const bd = await astroWorker.calculateDasaTimeline(boyDetails.starId, boyDetails.dob, boyDetails.time, boyDetails.pada);
+        const gd = await astroWorker.calculateDasaTimeline(girlDetails.starId, girlDetails.dob, girlDetails.time, girlDetails.pada);
         const m = await astroWorker.findMuhurthams(girlDetails.starId, boyDetails.starId);
         setBoyDasa(bd);
         setGirlDasa(gd);
@@ -145,7 +161,7 @@ export default function App() {
       };
       fetchDasaAndMuhurthams();
     }
-  }, [boyDetails.starId, boyDetails.dob, girlDetails.starId, girlDetails.dob]);
+  }, [boyDetails.starId, boyDetails.dob, boyDetails.time, boyDetails.pada, girlDetails.starId, girlDetails.dob, girlDetails.time, girlDetails.pada]);
 
   const getPoruthamIcon = (name: string) => {
     switch (name) {
@@ -225,8 +241,8 @@ export default function App() {
       setIndepthResult(result);
       
       // Calculate Dasa and Muhurthams
-      setBoyDasa(await astroWorker.calculateDasaTimeline(boyDetails.starId, boyDetails.dob));
-      setGirlDasa(await astroWorker.calculateDasaTimeline(girlDetails.starId, girlDetails.dob));
+      setBoyDasa(await astroWorker.calculateDasaTimeline(boyDetails.starId, boyDetails.dob, boyDetails.time, boyDetails.pada));
+      setGirlDasa(await astroWorker.calculateDasaTimeline(girlDetails.starId, girlDetails.dob, girlDetails.time, girlDetails.pada));
       setMuhurthams(await astroWorker.findMuhurthams(girlDetails.starId, boyDetails.starId));
       
       setView('analysis');
@@ -545,7 +561,7 @@ export default function App() {
                     {t('btn.check')}
                   </button>
                   <button 
-                    onClick={() => { haptic.light(); setView('janam-kundli'); }}
+                    onClick={() => { haptic.light(); setView('general-horoscope'); }}
                     className="bg-white/60 backdrop-blur-md border border-white/30 text-primary font-semibold py-4 px-8 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.1)] active:scale-95 transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
                   >
                     {t('home.explore')}
@@ -738,7 +754,7 @@ export default function App() {
                         <span className="material-symbols-outlined text-xl sm:text-2xl">help_outline</span>
                       </div>
                       <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
-                        {lang === 'ml' ? 'പ്രശ്ന കുണ്ഡലി' : 'Prashna Kundali'}
+                        {lang === 'ml' ? 'പ്രശ്ന വിചാരം' : 'Prashna Vicharam'}
                       </h4>
                       <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
                         {lang === 'ml' ? 'തത്സമയ ചോദ്യ വിചാരം' : 'Instant Horary Query'}
@@ -749,7 +765,7 @@ export default function App() {
                     </span>
                   </div>
 
-                  {/* Transit Forecast & Sade Sati */}
+                  {/* Transit Forecast & Ezharashani */}
                   <div 
                     onClick={() => { haptic.light(); setView('transit-forecast'); }}
                     className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
@@ -759,10 +775,10 @@ export default function App() {
                         <span className="material-symbols-outlined text-xl sm:text-2xl">track_changes</span>
                       </div>
                       <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
-                        {lang === 'ml' ? 'ഗോചാര ഫലം' : 'Transits & Sade Sati'}
+                        {lang === 'ml' ? 'ഗോചാര ഫലം' : 'Transits & Ezharashani'}
                       </h4>
                       <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
-                        {lang === 'ml' ? 'ശനി & വ്യാഴ മാറ്റങ്ങൾ' : 'Planetary Movement'}
+                        {lang === 'ml' ? 'ഏഴരശ്ശനി & വ്യാഴ മാറ്റം' : 'Saturn & Jupiter Transit'}
                       </p>
                     </div>
                     <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
@@ -809,6 +825,153 @@ export default function App() {
                     </div>
                     <span className="text-[10px] sm:text-[11px] font-bold text-amber-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
                       {lang === 'ml' ? 'പരിശോധിക്കുക' : 'Check Dates'} →
+                    </span>
+                  </div>
+
+                  {/* Career & Vocational Direction */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('career-vocational'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/10 text-indigo-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">work</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'തൊഴിൽ & കർമ്മഫലം' : 'Career & Direction'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'നേതൃത്വവും സംരംഭകത്വവും' : 'Leadership & Vocation'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'കാണുക' : 'Explore'} →
+                    </span>
+                  </div>
+
+                  {/* Medical Astrology & Surgery */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('medical-astrology'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-teal-500/10 text-teal-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">local_hospital</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'ആയുർ ജ്യോതിഷം' : 'Medical Astrology'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'ത്രിദോഷം & ചികിത്സാ വേള' : 'Tridosha & Surgery'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-teal-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'പരിശോധിക്കുക' : 'Check'} →
+                    </span>
+                  </div>
+
+                  {/* Financial & Wealth Forecasting */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('financial-wealth'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-800 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">payments</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'ധന ഭാവ ഫലം' : 'Wealth & Prosperity'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'ലക്ഷ്മീ യോഗവും സമ്പാദ്യവും' : 'Lakshmi Yoga & Savings'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-amber-800 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'അറിയുക' : 'Analyze'} →
+                    </span>
+                  </div>
+
+                  {/* Remedial Prescriptions & Vazhipadu */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('remedial-prescriptions'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/10 text-purple-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">auto_fix_high</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'പരിഹാര വിധികൾ' : 'Remedies & Gemstones'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'രത്നവും ക്ഷേത്ര വഴിപാടുകളും' : 'Ratnam & Vazhipadu'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-purple-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'കാണുക' : 'Remedies'} →
+                    </span>
+                  </div>
+
+                  {/* Travel & Migration Timing */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('yatra-muhurtham'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-sky-500/10 text-sky-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">flight_takeoff</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'യാത്രാ മുഹൂർത്തം' : 'Travel Muhurtham'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'വാരശൂല & ചന്ദ്രബലം' : 'Vaara Shoola & Safety'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-sky-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'തിരഞ്ഞെടുക്കുക' : 'Select'} →
+                    </span>
+                  </div>
+
+                  {/* Spiritual Initiation & Diksha */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('spiritual-initiation'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-900 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">self_improvement</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'ഇഷ്ടദേവത' : 'Ishta Devatha & Diksha'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'ഉപാസന & മന്ത്രദീക്ഷ' : 'Mantra & Sadhana'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-amber-900 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'അറിയുക' : 'Discover'} →
+                    </span>
+                  </div>
+
+                  {/* Astrometeorology & Relocation */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('astrometeorology'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-800 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">cloudy_snowing</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'ഞാറ്റുവേല & മഴഫലം' : 'Nhattuvela & Weather'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'മഴക്കണക്കും ദിഗ്ബലവും' : 'Rain Lore & Dig-Bala'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-emerald-800 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'കാണുക' : 'Forecast'} →
                     </span>
                   </div>
                 </div>
@@ -1788,12 +1951,20 @@ export default function App() {
                       <p className="text-xs text-on-surface-variant">{t('page.kundli.yoga_desc')}</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => setView('home')}
-                    className="w-full mt-8 bg-primary text-white font-semibold py-4 rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-transform"
-                  >
-                    {t('action.back_to_home')}
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3 mt-8">
+                    <button 
+                      onClick={() => setView('general-horoscope')}
+                      className="flex-1 bg-primary text-white font-semibold py-4 rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-transform text-sm"
+                    >
+                      {lang === 'ml' ? 'ജാതകം കാണുക' : 'Generate Full Jathakam'}
+                    </button>
+                    <button 
+                      onClick={() => setView('home')}
+                      className="px-6 py-4 bg-slate-100 text-slate-700 font-semibold rounded-full active:scale-95 transition-transform text-sm text-center"
+                    >
+                      {t('action.back_to_home')}
+                    </button>
+                  </div>
                 </div>
               </section>
             </motion.div>
@@ -2037,7 +2208,7 @@ export default function App() {
           </motion.div>
         )}
 
-        {/* Transit & Sade Sati View */}
+        {/* Transit & Ezharashani View */}
         {view === 'transit-forecast' && (
           <motion.div
             key="transit-forecast"
@@ -2090,6 +2261,118 @@ export default function App() {
             className="flex-1 max-w-xl mx-auto w-full"
           >
             <VyaparMuhurthamView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Career & Vocational Direction View */}
+        {view === 'career-vocational' && (
+          <motion.div
+            key="career-vocational"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <CareerVocationalView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Medical Astrology & Surgery Timing View */}
+        {view === 'medical-astrology' && (
+          <motion.div
+            key="medical-astrology"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <MedicalAstrologyView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Financial & Wealth Forecasting View */}
+        {view === 'financial-wealth' && (
+          <motion.div
+            key="financial-wealth"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <FinancialWealthView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Remedial Prescriptions & Vazhipadu View */}
+        {view === 'remedial-prescriptions' && (
+          <motion.div
+            key="remedial-prescriptions"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <RemedialPrescriptionsView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Travel & Migration Timing View */}
+        {view === 'yatra-muhurtham' && (
+          <motion.div
+            key="yatra-muhurtham"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <YatraMuhurthamView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Spiritual Initiation & Diksha View */}
+        {view === 'spiritual-initiation' && (
+          <motion.div
+            key="spiritual-initiation"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <SpiritualInitiationView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Litigation Strategy & Disputes View */}
+        {view === 'litigation-strategy' && (
+          <motion.div
+            key="litigation-strategy"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <LitigationStrategyView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Astrometeorology & Relocation View */}
+        {view === 'astrometeorology' && (
+          <motion.div
+            key="astrometeorology"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <AstrometeorologyView onBack={() => setView('home')} />
           </motion.div>
         )}
         </AnimatePresence>
@@ -2224,15 +2507,23 @@ export default function App() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5 px-2">{t('nav.astrology_services')}</p>
                   <nav className="space-y-1">
                     {[
-                      { id: 'housewarming', icon: 'cottage', label: t('nav.housewarming'), view: 'housewarming' },
                       { id: 'general-horoscope', icon: 'psychology', label: t('nav.general_horoscope'), view: 'general-horoscope' },
                       { id: 'prashna-kundali', icon: 'help_outline', label: t('nav.prashna_kundali'), view: 'prashna-kundali' },
                       { id: 'transit-forecast', icon: 'track_changes', label: t('nav.transit_forecast'), view: 'transit-forecast' },
+                      { id: 'career', icon: 'work', label: t('nav.career_vocational'), view: 'career-vocational' },
+                      { id: 'medical', icon: 'local_hospital', label: t('nav.medical_astrology'), view: 'medical-astrology' },
+                      { id: 'financial', icon: 'payments', label: t('nav.financial_wealth'), view: 'financial-wealth' },
+                      { id: 'remedial', icon: 'auto_fix_high', label: t('nav.remedial_prescriptions'), view: 'remedial-prescriptions' },
                       { id: 'vyapar', icon: 'storefront', label: t('nav.vyapar_muhurtham'), view: 'vyapar-muhurtham' },
+                      { id: 'housewarming', icon: 'cottage', label: t('nav.housewarming'), view: 'housewarming' },
                       { id: 'bhoomi', icon: 'foundation', label: t('nav.bhoomi_puja'), view: 'bhoomi-puja' },
+                      { id: 'yatra', icon: 'flight_takeoff', label: t('nav.yatra_muhurtham'), view: 'yatra-muhurtham' },
                       { id: 'vahana', icon: 'directions_car', label: t('nav.vahana_muhurtham'), view: 'vahana-muhurtham' },
                       { id: 'naming', icon: 'child_care', label: t('nav.baby_naming'), view: 'baby-naming' },
                       { id: 'samskaras', icon: 'school', label: t('nav.early_samskaras'), view: 'early-life-samskaras' },
+                      { id: 'spiritual', icon: 'self_improvement', label: t('nav.spiritual_initiation'), view: 'spiritual-initiation' },
+                      { id: 'litigation', icon: 'gavel', label: t('nav.litigation_strategy'), view: 'litigation-strategy' },
+                      { id: 'weather', icon: 'cloudy_snowing', label: t('nav.astrometeorology'), view: 'astrometeorology' },
                     ].map((item) => (
                       <button
                         key={item.id}

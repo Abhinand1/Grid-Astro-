@@ -105,10 +105,11 @@ export function calculateVahanaMuhurthams(
     if (dayOfWeek === 2) continue; // Skip Tuesday
 
     // Tarabalam
-    const starDiff = ((star.id - buyerStarId) + 27) % 9;
-    const isTarabalamGood = (starDiff === 1 || starDiff === 3 || starDiff === 5 || starDiff === 7 || starDiff === 8);
+    const countFromOwner = ((star.id - buyerStarId + 27) % 27) + 1;
+    const taraIndex = (countFromOwner - 1) % 9;
+    const isTarabalamGood = (taraIndex === 1 || taraIndex === 3 || taraIndex === 5 || taraIndex === 7 || taraIndex === 8);
     // 0 is Janma (avoid for vehicle delivery if possible), 2 is Vipat, 4 is Pratyak, 6 is Naidhana
-    if (starDiff === 2 || starDiff === 4 || starDiff === 6) {
+    if (taraIndex === 2 || taraIndex === 4 || taraIndex === 6) {
       continue;
     }
 
@@ -141,8 +142,8 @@ export function calculateVahanaMuhurthams(
       starMalayalam: star.malayalamName,
       tithi: `${isShukla ? 'Shukla' : 'Krishna'} ${tithiObj.en}`,
       tithiMalayalam: `${isShukla ? 'ശുക്ലപക്ഷ' : 'കൃഷ്ണപക്ഷ'} ${tithiObj.ml}`,
-      tarabalam: tarabalamNamesEn[starDiff],
-      tarabalamMalayalam: tarabalamNames[starDiff],
+      tarabalam: tarabalamNamesEn[taraIndex],
+      tarabalamMalayalam: tarabalamNames[taraIndex],
       score: Math.min(score, 100),
       quality,
       qualityMalayalam,

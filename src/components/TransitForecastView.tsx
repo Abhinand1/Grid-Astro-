@@ -43,7 +43,7 @@ export const TransitForecastView: React.FC<Props> = ({ onBack }) => {
         </button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
-            {lang === 'ml' ? 'ഗോചാര ഫലവും ശനി മാറ്റവും' : 'Planetary Transits & Sade Sati'}
+            {lang === 'ml' ? 'ഗോചാര ഫലവും ഏഴരശ്ശനിമറ്റവും' : 'Planetary Transits & Ezharashani'}
           </h1>
           <p className="text-[11px] sm:text-xs text-slate-500 font-medium leading-snug">
             {lang === 'ml' 
@@ -177,7 +177,7 @@ export const TransitForecastView: React.FC<Props> = ({ onBack }) => {
             <div className="flex items-center gap-2">
               <AlertTriangle size={18} className="text-indigo-600 shrink-0" />
               <h3 className="font-extrabold text-slate-900 text-sm">
-                {lang === 'ml' ? 'ശനി സഞ്ചാരവും ഏഴരശ്ശനി സ്വാധീനവും' : 'Saturn Transit & Sade Sati Analysis'}
+                {lang === 'ml' ? 'ശനി സഞ്ചാരവും ഏഴരശ്ശനി സ്വാധീനവും' : 'Saturn Transit & Ezharashani Analysis'}
               </h3>
             </div>
             <p className="text-slate-700 leading-relaxed text-xs sm:text-sm bg-slate-50 p-4 rounded-2xl border border-slate-100 break-words">

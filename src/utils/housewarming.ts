@@ -146,11 +146,12 @@ export function calculateHousewarmingMuhurthams(
     }
 
     // 5. Tarabalam relative to Owner Star
-    const starDiff = ((star.id - ownerStarId) + 27) % 9;
-    const tarabalamInfo = TARABALAM_INFO[starDiff];
+    const countFromOwner = ((star.id - ownerStarId + 27) % 27) + 1;
+    const taraIndex = (countFromOwner - 1) % 9;
+    const tarabalamInfo = TARABALAM_INFO[taraIndex];
 
-    // If Tarabalam is inauspicious (Vipat, Pratyak, Naidhana), skip
-    if (!tarabalamInfo.auspicious && (starDiff === 2 || starDiff === 4 || starDiff === 6)) {
+    // If Tarabalam is inauspicious (Vipat: 2, Pratyak: 4, Naidhana: 6), skip
+    if (!tarabalamInfo.auspicious && (taraIndex === 2 || taraIndex === 4 || taraIndex === 6)) {
       continue;
     }
 

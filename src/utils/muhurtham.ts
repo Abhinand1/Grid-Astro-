@@ -52,8 +52,10 @@ export function findMuhurthams(girlStarId: number, boyStarId: number): Muhurtham
     }
 
     // Check Tarabalam for both partners
-    const girlTarabalam = ((star.id - girlStarId) + 27) % 9;
-    const boyTarabalam = ((star.id - boyStarId) + 27) % 9;
+    const countGirl = ((star.id - girlStarId + 27) % 27) + 1;
+    const girlTarabalam = (countGirl - 1) % 9;
+    const countBoy = ((star.id - boyStarId + 27) % 27) + 1;
+    const boyTarabalam = (countBoy - 1) % 9;
 
     // Vipat (2), Pratyak (4), Naidhana (6) are inauspicious
     if (girlTarabalam === 2 || girlTarabalam === 4 || girlTarabalam === 6 ||

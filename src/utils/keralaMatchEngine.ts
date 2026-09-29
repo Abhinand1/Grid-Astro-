@@ -693,7 +693,7 @@ export function evaluatePapasamya(girlDate: Date, boyDate: Date, girlLagna?: str
 }
 
 // ----------------------------------------------------------------------
-// MODULE 3: CHOVVA DOSHAM (MANGAL DOSHA) & CANCELLATION RULES
+// MODULE 3: CHOVVA DOSHAM (KUJA DOSHAM) & CANCELLATION RULES
 // ----------------------------------------------------------------------
 
 export function evaluateChovvaDoshamForPerson(date: Date, lagnaName?: string): { status: 'NO_DOSHA' | 'ACTIVE_DOSHA' | 'DOSHA_CANCELLED'; reason: string } {

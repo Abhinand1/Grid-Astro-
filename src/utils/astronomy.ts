@@ -163,8 +163,8 @@ export function calculateDailyHoroscope(janmaStarId: number, date: Date = new Da
       remedyMalayalam = 'പൂക്കൾ അർപ്പിക്കുക.';
       break;
     case 8:
-      status = 'Very Bad';
-      statusMalayalam = 'വളരെ മോശം (അഷ്ടമ ശനി/ചന്ദ്രൻ)';
+      status = 'Chandra Ashtamam';
+      statusMalayalam = 'ചന്ദ്രാഷ്ടമം (അതീവ ജാഗ്രത)';
       prediction = 'Chandra Ashtama. Exercise extreme caution. Potential for misery, fear, illness, and arguments. Avoid important decisions and long-distance travels. Stay calm and patient.';
       predictionMalayalam = 'ചന്ദ്രാഷ്ടമം. അതീവ ശ്രദ്ധ ആവശ്യമാണ്. ദുഃഖം, ഭയം, രോഗം, തർക്കങ്ങൾ എന്നിവയ്ക്ക് സാധ്യത. പ്രധാന തീരുമാനങ്ങളും ദൂരയാത്രകളും മാറ്റിവെക്കുക. ക്ഷമയോടെയും ശാന്തമായും ഇരിക്കുക.';
       luckyColor = 'Grey';

@@ -62,12 +62,12 @@ export const PrashnaKundaliView: React.FC<Props> = ({ onBack }) => {
         </button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
-            {lang === 'ml' ? 'പ്രശ്ന ജ്യോതിഷം (ഹൊററി)' : 'Prashna Kundali (Horary Astrology)'}
+            {lang === 'ml' ? 'പ്രശ്ന വിചാരം (തത്സമയ പ്രശ്നം)' : 'Prashna Vicharam (Horary Astrology)'}
           </h1>
           <p className="text-[11px] sm:text-xs text-slate-500 font-medium leading-snug">
             {lang === 'ml' 
-              ? 'ചോദ്യ നിമിഷത്തിലെ ഗ്രഹനില അടിസ്ഥാനമാക്കിയുള്ള ആധികാരിക ഫലം' 
-              : 'Precise Divinatory Chart of the Exact Moment'}
+              ? 'ചോദ്യ നിമിഷത്തിലെ ഉദയലഗ്നവും താംബൂല ആരൂഢവും അടിസ്ഥാനമാക്കിയുള്ള ആധികാരിക ഫലം' 
+              : 'Precise Horary Astrology Based on Udaya Lagna & Tambula Arudha'}
           </p>
         </div>
       </div>

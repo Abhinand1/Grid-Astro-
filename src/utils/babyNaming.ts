@@ -125,8 +125,10 @@ export function calculateBabyNaming(params: {
     const milestoneDays = [
       { days: 11, title: '11-ാം ദിവസം (Ekadasha Dina)', mlTitle: 'പതിനൊന്നാം ദിവസം', desc: 'First traditional ceremony day in Vedic scriptures.' },
       { days: 12, title: '12-ാം ദിവസം (Dwadasha Dina)', mlTitle: 'പന്ത്രണ്ടാം ദിവസം', desc: 'Auspicious post-purification naming date.' },
-      { days: 16, title: '16-ാം ദിവസം (Shodasha Dina)', mlTitle: 'പതിനാറാം ദിവസം', desc: 'Classical auspicious milestone for naming.' },
-      { days: 28, title: '28-ാം ദിവസം (ഇരുപത്തെട്ട് / Irupathettu)', mlTitle: 'ഇരുപത്തെട്ടാം ദിവസം (നൂലുകെട്ട്)', desc: 'Most sacred traditional Kerala ceremony with waist-cord tying (Charadu Kettu).' }
+      ...(params.gender === 'girl'
+        ? [{ days: 27, title: '27-ാം ദിവസം (ഇരുപത്തിയേഴ് / പെൺകുട്ടികൾക്ക്)', mlTitle: 'ഇരുപത്തിയേഴാം ദിവസം (നൂലുകെട്ട്)', desc: 'Sacred traditional Kerala ceremony with waist-cord tying (Charadu Kettu) for baby girls.' }]
+        : [{ days: 28, title: '28-ാം ദിവസം (ഇരുപത്തെട്ട് / Irupathettu)', mlTitle: 'ഇരുപത്തെട്ടാം ദിവസം (നൂലുകെട്ട്)', desc: 'Most sacred traditional Kerala ceremony with waist-cord tying (Charadu Kettu) for baby boys.' }]
+      )
     ];
 
     for (const item of milestoneDays) {

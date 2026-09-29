@@ -5,8 +5,8 @@
 
 import React, { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Calendar, Clock, MapPin, User, Sparkles, Menu, ArrowRight, Star, ChevronDown, CheckCircle, XCircle, ShieldAlert, Scale, Activity, ArrowLeft, Loader2, Grid3X3, Info, X } from 'lucide-react';
-import { getCurrentNakshatra } from './utils/astronomy';
+import { Heart, Calendar, Clock, MapPin, User, SunMedium, Compass, Flame, Scroll, Menu, ArrowRight, Star, ChevronDown, CheckCircle, XCircle, ShieldAlert, Scale, Activity, ArrowLeft, Loader2, Grid3X3, Info, X } from 'lucide-react';
+import { getCurrentNakshatra, getDayNakshatra, getKeralaDayPanchang } from './utils/astronomy';
 import { NAKSHATRAS } from './utils/astroData';
 import { MatchReport, PoruthamResult } from './utils/porutham';
 import { IndepthReport } from './utils/indepth';
@@ -18,6 +18,7 @@ import { MuhurthamDate } from './utils/muhurtham';
 import { DasaTimeline } from './components/DasaTimeline';
 import { MuhurthamFinder } from './components/MuhurthamFinder';
 import { DailyHoroscopeModal } from './components/DailyHoroscopeModal';
+import { DailyPanchangModal } from './components/DailyPanchangModal';
 import { PoruthamDetailModal } from './components/PoruthamDetailModal';
 import { HousewarmingView } from './components/HousewarmingView';
 import { GeneralHoroscopeView } from './components/GeneralHoroscopeView';
@@ -179,37 +180,21 @@ export default function App() {
     }
   };
 
-  const currentNakshatra = getCurrentNakshatra();
+  const panchang = getKeralaDayPanchang();
+  const [isPanchangModalOpen, setIsPanchangModalOpen] = useState(false);
+  const currentNakshatra = panchang.dayNakshatra; // Authentic Kerala Calendar Day Star (Udaya Nakshatra)
 
   const getCurrentTithi = () => {
-    const now = new Date();
-    const day = now.getDate();
-    const tithis = ["Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashti", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima", "Amavasya"];
-    return tithis[day % 16];
+    return lang === 'ml' ? panchang.tithi.nameMl : panchang.tithi.nameEn;
   };
 
   const getCurrentAlignment = () => {
-    const now = new Date();
-    const hour = now.getHours();
-    const day = now.getDate();
-    
-    const sunSigns = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-    const moonSigns = ["Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer"];
-    const risingSigns = ["Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra"];
-    
-    const sunIdx = (day + Math.floor(now.getMonth() * 1.5)) % 12;
-    const moonIdx = (day * 2 + hour) % 12;
-    const risingIdx = (hour + Math.floor(day / 2)) % 12;
-    
-    const score = 75 + (day % 15);
-    const status = score > 85 ? "Excellent" : score > 80 ? "Great" : "Good";
-    
     return {
-      sun: sunSigns[sunIdx],
-      moon: moonSigns[moonIdx],
-      rising: risingSigns[risingIdx],
-      score,
-      status
+      sun: lang === 'ml' ? panchang.malayalamDate.monthMalayalam : panchang.malayalamDate.month,
+      moon: lang === 'ml' ? panchang.dayNakshatra.malayalamName : panchang.dayNakshatra.name,
+      rising: lang === 'ml' ? 'കന്നി' : 'Virgo',
+      score: 88,
+      status: lang === 'ml' ? 'അതിവിശിഷ്ടം' : 'Excellent'
     };
   };
 
@@ -524,9 +509,16 @@ export default function App() {
           >
             {lang === 'en' ? 'മലയാളം' : 'EN'}
           </button>
-          <div className="flex flex-col items-end justify-center leading-none min-w-0">
+          <div 
+            onClick={() => {
+              haptic.light();
+              setIsPanchangModalOpen(true);
+            }}
+            className="flex flex-col items-end justify-center leading-none min-w-0 cursor-pointer"
+            title={lang === 'ml' ? "ഇന്നത്തെ നാളും പഞ്ചാംഗവും" : "Today's Nakshatra & Panchangam"}
+          >
             <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-primary/70 mb-0.5">Nakshatra</span>
-            <span className="text-[10px] font-black text-slate-900 leading-none truncate max-w-[85px] sm:max-w-none">{lang === 'ml' ? currentNakshatra.malayalamName : currentNakshatra.name}</span>
+            <span className="text-[10px] font-black text-slate-900 leading-none truncate max-w-[85px] sm:max-w-none">{lang === 'ml' ? panchang.dayNakshatra.malayalamName : panchang.dayNakshatra.name}</span>
             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1 whitespace-nowrap">
               {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
@@ -566,6 +558,50 @@ export default function App() {
                   >
                     {t('home.explore')}
                   </button>
+                </div>
+              </section>
+
+              {/* Today's Kerala Panchangam Banner */}
+              <section className="mb-8">
+                <div 
+                  onClick={() => {
+                    haptic.light();
+                    setIsPanchangModalOpen(true);
+                  }}
+                  className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-500/15 border-2 border-amber-300/80 rounded-[28px] p-5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-amber-200/90 text-amber-900 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
+                          <SunMedium className="w-3 h-3 text-amber-700" />
+                          {lang === 'ml' ? 'ഇന്നത്തെ ദിവസ നാൾ' : "Today's Day Star"}
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-800/80 whitespace-nowrap">
+                          {lang === 'ml' ? panchang.malayalamDate.formattedMl : panchang.malayalamDate.formattedEn}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <h2 className="text-2xl sm:text-3xl font-black text-amber-950 tracking-tight leading-none">
+                          {lang === 'ml' ? panchang.dayNakshatra.malayalamName : panchang.dayNakshatra.name}
+                        </h2>
+                        <span className="inline-flex items-center whitespace-nowrap shrink-0 text-xs font-bold text-amber-800 bg-amber-100/90 border border-amber-200/80 px-2.5 py-0.5 rounded-full shadow-2xs">
+                          {lang === 'ml' ? 'ഉദയനക്ഷത്രം' : 'Sunrise Star'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-900 font-semibold pt-0.5 leading-relaxed">
+                        {lang === 'ml'
+                          ? `സാധുത: രാവിലെ ${panchang.transitionTimeFormatted} വരെ (${panchang.nazhikaDuration}) • തുടർന്ന് ${panchang.nextNakshatra.malayalamName}`
+                          : `Valid till ${panchang.transitionTimeFormatted} (${panchang.nazhikaValue.toFixed(1)} Nazhika) • Then ${panchang.nextNakshatra.name}`}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0 pt-0.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-900 bg-white/90 border border-amber-200 px-3 py-1.5 rounded-xl group-hover:bg-amber-100 transition-colors shadow-2xs whitespace-nowrap">
+                        {lang === 'ml' ? 'പഞ്ചാംഗം കാണുക' : 'View Details'}
+                        <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </section>
 
@@ -652,7 +688,7 @@ export default function App() {
                   >
                     <div className="relative z-10">
                       <div className="flex justify-between items-start mb-4 sm:mb-6">
-                        <span className="material-symbols-outlined text-2xl sm:text-3xl text-primary">auto_awesome</span>
+                        <span className="material-symbols-outlined text-2xl sm:text-3xl text-primary">wb_sunny</span>
                         <span className="bg-primary/10 text-primary text-[10px] px-2.5 sm:px-3 py-1 rounded-full font-bold uppercase shrink-0">{t('home.live_reading')}</span>
                       </div>
                       <h4 className="text-lg sm:text-xl font-bold mb-1 leading-tight">{t('home.daily')}</h4>
@@ -898,7 +934,7 @@ export default function App() {
                   >
                     <div>
                       <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/10 text-purple-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
-                        <span className="material-symbols-outlined text-xl sm:text-2xl">auto_fix_high</span>
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">diamond</span>
                       </div>
                       <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
                         {lang === 'ml' ? 'പരിഹാര വിധികൾ' : 'Remedies & Gemstones'}
@@ -1193,7 +1229,7 @@ export default function App() {
                     className="w-full bg-gradient-to-r from-primary to-primary-container text-white h-16 rounded-full font-bold text-lg shadow-xl shadow-primary-container/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2" 
                     type="submit"
                   >
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>explore</span>
                     {t('form.calculate')}
                   </button>
                 </div>
@@ -1337,7 +1373,7 @@ export default function App() {
                   disabled={isLoadingIndepth}
                   className="w-full h-14 bg-white/60 backdrop-blur-xl border border-primary/20 text-primary rounded-full font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
                 >
-                  {isLoadingIndepth ? <Loader2 size={18} className="animate-spin" /> : <span className="material-symbols-outlined">auto_awesome</span>}
+                  {isLoadingIndepth ? <Loader2 size={18} className="animate-spin" /> : <span className="material-symbols-outlined">psychology</span>}
                   {isLoadingIndepth ? 'Analyzing...' : t('btn.indepth')}
                 </button>
               </section>
@@ -1390,7 +1426,7 @@ export default function App() {
                 <section className="bg-gradient-to-br from-primary to-secondary-container rounded-[32px] p-6 text-white shadow-xl shadow-primary/20">
                   <div className="flex items-start gap-4">
                     <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
-                      <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                      <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>flare</span>
                     </div>
                     <div>
                       <h3 className="text-lg font-bold">{t('muhurtham.growth_synergy')}</h3>
@@ -1854,7 +1890,7 @@ export default function App() {
                 <section className="pb-10">
                   <div className="relative overflow-hidden rounded-[40px] bg-gradient-to-br from-[#904D00] to-[#F2994A] p-8 text-white shadow-xl">
                     {/* Sparkle decorations */}
-                    <span className="material-symbols-outlined absolute top-4 right-8 text-white/20 text-4xl">auto_awesome</span>
+                    <span className="material-symbols-outlined absolute top-4 right-8 text-white/20 text-4xl">stars</span>
                     <span className="material-symbols-outlined absolute bottom-10 left-4 text-white/10 text-6xl">flare</span>
                     
                     <div className="relative z-10 flex flex-col items-center text-center">
@@ -2459,7 +2495,7 @@ export default function App() {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 left-0 bottom-0 w-[290px] max-w-[85vw] bg-white z-[101] shadow-2xl flex flex-col"
+            className="fixed top-0 left-0 bottom-0 w-[320px] sm:w-[360px] max-w-[85vw] bg-white z-[101] shadow-2xl flex flex-col"
           >
               <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="text-xl tracking-tight text-slate-900 flex items-center gap-0.5 [&_span:first-child]:font-bold [&_span:last-child]:font-light">
@@ -2483,7 +2519,7 @@ export default function App() {
                       { id: 'home', icon: 'home', label: t('nav.home'), view: 'home' },
                       { id: 'compatibility', icon: 'favorite', label: t('nav.compatibility'), view: 'form' },
                       { id: 'chart', icon: 'grid_view', label: t('nav.rashi_chart'), view: 'chart' },
-                      { id: 'kundli', icon: 'auto_awesome', label: t('nav.janam_kundli'), view: 'janam-kundli' },
+                      { id: 'kundli', icon: 'explore', label: t('nav.janam_kundli'), view: 'janam-kundli' },
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -2496,7 +2532,7 @@ export default function App() {
                         }`}
                       >
                         <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
-                        <span className="text-sm truncate text-left flex-1 min-w-0 leading-tight">{item.label}</span>
+                        <span className="text-sm text-left flex-1 min-w-0 leading-snug whitespace-normal">{item.label}</span>
                       </button>
                     ))}
                   </nav>
@@ -2513,7 +2549,7 @@ export default function App() {
                       { id: 'career', icon: 'work', label: t('nav.career_vocational'), view: 'career-vocational' },
                       { id: 'medical', icon: 'local_hospital', label: t('nav.medical_astrology'), view: 'medical-astrology' },
                       { id: 'financial', icon: 'payments', label: t('nav.financial_wealth'), view: 'financial-wealth' },
-                      { id: 'remedial', icon: 'auto_fix_high', label: t('nav.remedial_prescriptions'), view: 'remedial-prescriptions' },
+                      { id: 'remedial', icon: 'diamond', label: t('nav.remedial_prescriptions'), view: 'remedial-prescriptions' },
                       { id: 'vyapar', icon: 'storefront', label: t('nav.vyapar_muhurtham'), view: 'vyapar-muhurtham' },
                       { id: 'housewarming', icon: 'cottage', label: t('nav.housewarming'), view: 'housewarming' },
                       { id: 'bhoomi', icon: 'foundation', label: t('nav.bhoomi_puja'), view: 'bhoomi-puja' },
@@ -2536,7 +2572,7 @@ export default function App() {
                         }`}
                       >
                         <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
-                        <span className="text-sm truncate text-left flex-1 min-w-0 leading-tight">{item.label}</span>
+                        <span className="text-sm text-left flex-1 min-w-0 leading-snug whitespace-normal">{item.label}</span>
                       </button>
                     ))}
                   </nav>
@@ -2564,7 +2600,7 @@ export default function App() {
                         }`}
                       >
                         <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
-                        <span className="text-sm truncate text-left flex-1 min-w-0 leading-tight">{item.label}</span>
+                        <span className="text-sm text-left flex-1 min-w-0 leading-snug whitespace-normal">{item.label}</span>
                       </button>
                     ))}
                   </nav>
@@ -2769,6 +2805,11 @@ export default function App() {
       <DailyHoroscopeModal 
         isOpen={isDailyHoroscopeOpen} 
         onClose={() => setIsDailyHoroscopeOpen(false)} 
+      />
+      <DailyPanchangModal
+        isOpen={isPanchangModalOpen}
+        onClose={() => setIsPanchangModalOpen(false)}
+        lang={lang}
       />
 
       {/* Muhurtham Calendar Modal */}

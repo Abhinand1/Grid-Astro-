@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Compass, Sparkles, AlertTriangle, ShieldCheck, ArrowLeft, ArrowUpRight, TrendingUp, Heart, Briefcase, Gem, Activity } from 'lucide-react';
+import { Compass, AlertTriangle, ShieldCheck, ArrowLeft, ArrowUpRight, TrendingUp, Heart, Briefcase, Gem, Activity } from 'lucide-react';
 import { calculateTransitForecast, TransitReport } from '../utils/transitForecast';
 import { RASIS, NAKSHATRAS } from '../utils/astroData';
 import { CustomSelect } from './CustomSelect';
@@ -106,7 +106,7 @@ export const TransitForecastView: React.FC<Props> = ({ onBack }) => {
             type="submit"
             className="w-full min-h-[48px] py-3.5 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-700/20 active:scale-98 transition-transform flex items-center justify-center gap-2 text-sm mt-1"
           >
-            <Sparkles size={17} className="shrink-0" />
+            <Compass size={17} className="shrink-0" />
             <span>{lang === 'ml' ? 'ഗോചാര ഫലം വിശകലനം ചെയ്യുക' : 'Calculate Transit Forecast'}</span>
           </button>
         </form>

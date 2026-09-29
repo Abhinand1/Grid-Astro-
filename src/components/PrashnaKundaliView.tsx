@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { HelpCircle, Sparkles, Clock, Compass, ShieldCheck, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, Clock, Compass, ShieldCheck, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { calculatePrashnaKundali, PrashnaCategory, PrashnaResult } from '../utils/prashnaKundali';
 import { CustomSelect } from './CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -151,7 +151,7 @@ export const PrashnaKundaliView: React.FC<Props> = ({ onBack }) => {
             type="submit"
             className="w-full min-h-[48px] py-3.5 sm:py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-bold rounded-2xl shadow-lg shadow-amber-700/20 active:scale-98 transition-transform flex items-center justify-center gap-2 text-sm mt-1"
           >
-            <Sparkles size={17} className="shrink-0" />
+            <Compass size={17} className="shrink-0" />
             <span>{lang === 'ml' ? 'പ്രശ്നം ചിന്തിക്കുക' : 'Cast Prashna Chart'}</span>
           </button>
         </form>

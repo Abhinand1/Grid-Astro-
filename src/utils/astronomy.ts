@@ -64,6 +64,245 @@ export function getCurrentRasiIndex(date: Date = new Date()): number {
   return index; // 0 to 11
 }
 
+export function getSiderealSunLongitude(date: Date = new Date()): number {
+  return getPlanetSiderealLongitude(Astronomy.Body.Sun, date);
+}
+
+// Kerala Reference Observer (Central Kerala: Thrissur / Kochi ~10.0° N, 76.3° E)
+export function getKeralaObserver(lat = 10.0, lon = 76.3, elevation = 10): Astronomy.Observer {
+  return new Astronomy.Observer(lat, lon, elevation);
+}
+
+// Astronomical Sunrise and Sunset in Kerala for a given date
+export function getKeralaSunTimes(targetDate: Date = new Date(), lat = 10.0, lon = 76.3) {
+  const observer = getKeralaObserver(lat, lon);
+  // IST offset is UTC + 5:30
+  const istOffsetMs = 5.5 * 3600 * 1000;
+  const istDate = new Date(targetDate.getTime() + istOffsetMs);
+  const y = istDate.getUTCFullYear();
+  const m = istDate.getUTCMonth();
+  const d = istDate.getUTCDate();
+  
+  // Midnight IST in UTC
+  const midnightUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) - istOffsetMs);
+  
+  const sunrise = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, Astronomy.MakeTime(midnightUtc), 1);
+  const sunriseDate = sunrise ? sunrise.date : new Date(midnightUtc.getTime() + 6 * 3600 * 1000 + 13 * 60 * 1000);
+  
+  const sunset = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, Astronomy.MakeTime(sunriseDate), 1);
+  const sunsetDate = sunset ? sunset.date : new Date(midnightUtc.getTime() + 18 * 3600 * 1000 + 16 * 60 * 1000);
+  
+  return { sunriseDate, sunsetDate, midnightUtc };
+}
+
+// Format a UTC date into IST 12-hour format "hh:mm AM/PM"
+export function formatISTTime(date: Date): string {
+  const ist = new Date(date.getTime() + 5.5 * 3600 * 1000);
+  let h = ist.getUTCHours();
+  const m = ist.getUTCMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const hh = h < 10 ? '0' + h : '' + h;
+  const mm = m < 10 ? '0' + m : '' + m;
+  return `${hh}:${mm} ${ampm}`;
+}
+
+// Binary search to find exact time when Moon passes into next nakshatra
+export function findNakshatraTransition(sunriseDate: Date, startNakIndex: number): Date {
+  let low = sunriseDate.getTime();
+  let high = low + 32 * 3600 * 1000; // Search up to 32 hours ahead
+  
+  for (let i = 0; i < 22; i++) {
+    const mid = (low + high) / 2;
+    const lonMid = getSiderealMoonLongitude(new Date(mid));
+    let diff = (lonMid - startNakIndex * (360 / 27) + 360) % 360;
+    if (diff >= (360 / 27)) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+  return new Date((low + high) / 2);
+}
+
+// Authentic Vedic Tithi calculation based on Sun-Moon angular elongation
+export function getKeralaTithi(date: Date = new Date()) {
+  const time = Astronomy.MakeTime(date);
+  const moon = Astronomy.EclipticGeoMoon(time);
+  const sunVec = Astronomy.GeoVector(Astronomy.Body.Sun, time, true);
+  const sun = Astronomy.Ecliptic(sunVec);
+  
+  let diff = (moon.lon - sun.elon + 360) % 360;
+  const tithiIndex = Math.floor(diff / 12); // 0 to 29
+  const paksha: 'Shukla' | 'Krishna' = diff < 180 ? 'Shukla' : 'Krishna';
+  const pakshaMalayalam = diff < 180 ? 'ശുക്ലപക്ഷം' : 'കൃഷ്ണപക്ഷം';
+  
+  const TITHI_NAMES = [
+    { en: 'Prathama', ml: 'പ്രഥമ' },
+    { en: 'Dwitiya', ml: 'ദ്വിതീയ' },
+    { en: 'Tritiya', ml: 'തൃതീയ' },
+    { en: 'Chaturthi', ml: 'ചതുർത്ഥി' },
+    { en: 'Panchami', ml: 'പഞ്ചമി' },
+    { en: 'Shashti', ml: 'ഷഷ്ഠി' },
+    { en: 'Saptami', ml: 'സപ്തമി' },
+    { en: 'Ashtami', ml: 'അഷ്ടമി' },
+    { en: 'Navami', ml: 'നവമി' },
+    { en: 'Dashami', ml: 'ദശമി' },
+    { en: 'Ekadashi', ml: 'ഏകാദശി' },
+    { en: 'Dwadashi', ml: 'ദ്വാദശി' },
+    { en: 'Trayodashi', ml: 'ത്രയോദശി' },
+    { en: 'Chaturdashi', ml: 'ചതുർദ്ദശി' },
+    { en: 'Pournami', ml: 'പൗർണ്ണമി' },
+  ];
+  
+  let nameEn = '';
+  let nameMl = '';
+  if (tithiIndex === 14) {
+    nameEn = 'Pournami (Full Moon)';
+    nameMl = 'പൗർണ്ണമി (വെളുത്തവാവ്)';
+  } else if (tithiIndex === 29) {
+    nameEn = 'Amavasya (New Moon)';
+    nameMl = 'അമാവാസി (കറുത്തവാവ്)';
+  } else {
+    const subIdx = tithiIndex % 15;
+    nameEn = `${paksha} ${TITHI_NAMES[subIdx].en}`;
+    nameMl = `${pakshaMalayalam} ${TITHI_NAMES[subIdx].ml}`;
+  }
+  
+  return {
+    index: tithiIndex,
+    paksha,
+    pakshaMalayalam,
+    nameEn,
+    nameMl,
+    diffDegrees: diff
+  };
+}
+
+export const MALAYALAM_MONTHS = [
+  { id: 1, en: 'Medam', ml: 'മേടം' },
+  { id: 2, en: 'Edavam', ml: 'ഇടവം' },
+  { id: 3, en: 'Mithunam', ml: 'മിഥുനം' },
+  { id: 4, en: 'Karkidakam', ml: 'കർക്കടകം' },
+  { id: 5, en: 'Chingam', ml: 'ചിങ്ങം' },
+  { id: 6, en: 'Kanni', ml: 'കന്നി' },
+  { id: 7, en: 'Thulam', ml: 'തുലാം' },
+  { id: 8, en: 'Vrischikam', ml: 'വൃശ്ചികം' },
+  { id: 9, en: 'Dhanu', ml: 'ധനു' },
+  { id: 10, en: 'Makaram', ml: 'മകരം' },
+  { id: 11, en: 'Kumbham', ml: 'കുംഭം' },
+  { id: 12, en: 'Meenam', ml: 'മീനം' }
+];
+
+export function getKeralaMalayalamDate(date: Date = new Date()) {
+  const sunLon = getSiderealSunLongitude(date);
+  const monthIdx = Math.floor(sunLon / 30);
+  const degInMonth = sunLon % 30;
+  const day = Math.floor(degInMonth) + 1;
+  const gregYear = date.getUTCFullYear();
+  // Kollavarsham year advances at 1st of Chingam (mid-August)
+  const kollavarshamYear = monthIdx >= 4 ? gregYear - 824 : gregYear - 825;
+  
+  return {
+    month: MALAYALAM_MONTHS[monthIdx].en,
+    monthMalayalam: MALAYALAM_MONTHS[monthIdx].ml,
+    day,
+    year: kollavarshamYear,
+    formattedEn: `${day} ${MALAYALAM_MONTHS[monthIdx].en} ${kollavarshamYear} ME`,
+    formattedMl: `കൊല്ലവർഷം ${kollavarshamYear} ${MALAYALAM_MONTHS[monthIdx].ml} ${day}`
+  };
+}
+
+export interface KeralaDayPanchang {
+  dayNakshatra: typeof NAKSHATRAS[0];
+  dayNakshatraIndex: number;
+  transitionTime: Date;
+  transitionTimeFormatted: string;
+  durationFromSunriseMins: number;
+  nazhikaDuration: string;
+  nazhikaValue: number;
+  nextNakshatra: typeof NAKSHATRAS[0];
+  currentNakshatra: typeof NAKSHATRAS[0];
+  currentNakshatraIndex: number;
+  isTransitioned: boolean;
+  sunrise: Date;
+  sunset: Date;
+  sunriseFormatted: string;
+  sunsetFormatted: string;
+  tithi: ReturnType<typeof getKeralaTithi>;
+  malayalamDate: ReturnType<typeof getKeralaMalayalamDate>;
+  explanation: {
+    ml: string;
+    en: string;
+  };
+}
+
+// Computes complete authentic Kerala Panchangam for the day
+export function getKeralaDayPanchang(targetDate: Date = new Date(), lat = 10.0, lon = 76.3): KeralaDayPanchang {
+  const { sunriseDate, sunsetDate } = getKeralaSunTimes(targetDate, lat, lon);
+  
+  // Day Star is determined at Sunrise (Udaya Nakshatra)
+  const sunriseMoonLon = getSiderealMoonLongitude(sunriseDate);
+  const dayNakIndex = Math.floor(sunriseMoonLon / (360 / 27));
+  const dayNakshatra = NAKSHATRAS[dayNakIndex];
+  
+  // Transition to next Nakshatra
+  const transitionTime = findNakshatraTransition(sunriseDate, dayNakIndex);
+  const transitionTimeFormatted = formatISTTime(transitionTime);
+  
+  const durationFromSunriseMins = Math.max(0, Math.round((transitionTime.getTime() - sunriseDate.getTime()) / (1000 * 60)));
+  const nazhikaVal = durationFromSunriseMins / 24;
+  const nazhikaWhole = Math.floor(nazhikaVal);
+  const vinazhika = Math.round((nazhikaVal - nazhikaWhole) * 60);
+  
+  // Format nazhika nicely, e.g. "6¾ നാഴിക" or "7 നാഴിക 4 വിനാഴിക"
+  let nazhikaDuration = `${nazhikaWhole} നാഴിക ${vinazhika} വിനാഴിക`;
+  if (Math.abs(nazhikaVal - 6.75) < 0.2) {
+    nazhikaDuration = `6¾ നാഴിക (${nazhikaWhole} നാഴിക ${vinazhika} വിനാഴിക)`;
+  }
+  
+  const nextNakIndex = (dayNakIndex + 1) % 27;
+  const nextNakshatra = NAKSHATRAS[nextNakIndex];
+  
+  // Current instantaneous Nakshatra
+  const currentNakIndex = getCurrentNakshatraIndex(targetDate);
+  const currentNakshatra = NAKSHATRAS[currentNakIndex];
+  const isTransitioned = targetDate.getTime() >= transitionTime.getTime();
+  
+  const tithi = getKeralaTithi(targetDate);
+  const malayalamDate = getKeralaMalayalamDate(targetDate);
+  
+  return {
+    dayNakshatra,
+    dayNakshatraIndex: dayNakIndex,
+    transitionTime,
+    transitionTimeFormatted,
+    durationFromSunriseMins,
+    nazhikaDuration,
+    nazhikaValue: nazhikaVal,
+    nextNakshatra,
+    currentNakshatra,
+    currentNakshatraIndex: currentNakIndex,
+    isTransitioned,
+    sunrise: sunriseDate,
+    sunset: sunsetDate,
+    sunriseFormatted: formatISTTime(sunriseDate),
+    sunsetFormatted: formatISTTime(sunsetDate),
+    tithi,
+    malayalamDate,
+    explanation: {
+      ml: `കേരള ജ്യോതിഷ സമ്പ്രദായപ്രകാരം ദിവസ നാൾ (ദിവസ നക്ഷത്രം) നിർണ്ണയിക്കുന്നത് അന്നത്തെ പ്രാദേശിക സൂര്യോദയ സമയത്തെ (ഉദയനക്ഷത്രം) അടിസ്ഥാനമാക്കിയാണ്. ഇന്ന് സൂര്യോദയത്തിൽ ${dayNakshatra.malayalamName} നക്ഷത്രമായിരുന്നു (${transitionTimeFormatted} വരെ / ${nazhikaDuration}). അതിനുശേഷമാണ് ${nextNakshatra.malayalamName} നക്ഷത്രം ആരംഭിച്ചത്. ഇതുകൊണ്ടാണ് പരമ്പരാഗത മലയാള കലണ്ടറുകളിൽ (മാതൃഭൂമി, മനോരമ മുതലായവ) ഇന്നത്തെ ദിവസ നക്ഷത്രമായി '${dayNakshatra.malayalamName}' എന്ന് രേഖപ്പെടുത്തുന്നത്.`,
+      en: `In authentic Kerala Jyothisham, the Star of the Day (ദിവസ നാൾ) is determined by the Udaya Nakshatra prevailing at local sunrise. Today at sunrise, ${dayNakshatra.name} prevailed until ${transitionTimeFormatted} IST (${nazhikaVal.toFixed(1)} Nazhika), after which ${nextNakshatra.name} began. This is why traditional Malayalam calendars record today's star as ${dayNakshatra.name}.`
+    }
+  };
+}
+
+// Returns the authentic Kerala Day Star (Udaya Nakshatra)
+export function getDayNakshatra(date: Date = new Date()) {
+  const panchang = getKeralaDayPanchang(date);
+  return panchang.dayNakshatra;
+}
+
 export function calculateDailyHoroscope(janmaStarId: number, date: Date = new Date()) {
   const janmaStar = NAKSHATRAS.find(n => n.id === janmaStarId);
   if (!janmaStar) throw new Error("Invalid Janma Star");

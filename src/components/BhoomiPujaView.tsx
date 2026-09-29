@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Shovel, Sparkles, Calendar, Clock, Star, ShieldCheck, ArrowLeft, Compass } from 'lucide-react';
+import { Shovel, Calendar, Clock, Star, ShieldCheck, ArrowLeft, Compass } from 'lucide-react';
 import { NAKSHATRAS } from '../utils/astroData';
 import { calculateBhoomiPujaMuhurthams, BhoomiPujaDate } from '../utils/bhoomiPuja';
 import { CustomSelect } from './CustomSelect';
@@ -110,7 +110,7 @@ export const BhoomiPujaView: React.FC<Props> = ({ onBack }) => {
             type="submit"
             className="w-full min-h-[48px] py-3.5 sm:py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-bold rounded-2xl shadow-lg shadow-amber-700/20 active:scale-98 transition-transform flex items-center justify-center gap-2 text-sm mt-1"
           >
-            <Sparkles size={17} className="shrink-0" />
+            <Shovel size={17} className="shrink-0" />
             <span className="truncate">{lang === 'ml' ? 'ശുഭ തീയതികൾ കണ്ടെത്തുക' : 'Find Bhoomi Puja Dates'}</span>
           </button>
         </form>

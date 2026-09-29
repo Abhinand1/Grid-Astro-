@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Loader2, SunMoon, Calendar } from 'lucide-react';
 import { NAKSHATRAS, RASIS } from '../utils/astroData';
-import { calculateDailyHoroscope, getCurrentNakshatra, getCurrentPlanets } from '../utils/astronomy';
+import { calculateDailyHoroscope, getDayNakshatra, getCurrentPlanets } from '../utils/astronomy';
 import { CustomSelect } from './CustomSelect';
 import { haptic } from '../utils/haptics';
 import { RasiChart } from './RasiChart';
@@ -21,8 +21,8 @@ export function DailyHoroscopeModal({ isOpen, onClose }: DailyHoroscopeModalProp
 
   useEffect(() => {
     if (isOpen && !selectedStar) {
-      const currentStar = getCurrentNakshatra();
-      setSelectedStar(currentStar.id);
+      const dayStar = getDayNakshatra();
+      setSelectedStar(dayStar.id);
     }
   }, [isOpen, selectedStar]);
 
@@ -134,7 +134,7 @@ export function DailyHoroscopeModal({ isOpen, onClose }: DailyHoroscopeModalProp
 
                 <div className="p-5 bg-orange-50 border border-orange-100 rounded-2xl space-y-4">
                   <div className="flex items-center gap-2 border-b border-orange-200/50 pb-3">
-                    <span className="material-symbols-outlined text-primary">auto_awesome</span>
+                    <span className="material-symbols-outlined text-primary">wb_sunny</span>
                     <h3 className="font-bold text-primary">Today's Insight (ഇന്നത്തെ ഫലം)</h3>
                   </div>
                   

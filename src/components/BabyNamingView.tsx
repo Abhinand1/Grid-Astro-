@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, Calendar, Heart, Star, ArrowLeft, Volume2, Bookmark } from 'lucide-react';
+import { BookOpen, Calendar, Heart, Star, ArrowLeft, Volume2, Bookmark } from 'lucide-react';
 import { NAKSHATRAS } from '../utils/astroData';
 import { calculateBabyNaming, BabyNamingResult } from '../utils/babyNaming';
 import { CustomSelect } from './CustomSelect';
@@ -145,7 +145,7 @@ export const BabyNamingView: React.FC<Props> = ({ onBack }) => {
             type="submit"
             className="w-full min-h-[48px] py-3.5 sm:py-4 bg-gradient-to-r from-rose-600 to-pink-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-600/20 active:scale-98 transition-transform flex items-center justify-center gap-2 text-sm"
           >
-            <Sparkles size={17} className="shrink-0" />
+            <BookOpen size={17} className="shrink-0" />
             <span className="truncate">{lang === 'ml' ? 'നാമാക്ഷരങ്ങളും പേരുകളും കാണുക' : 'Find Auspicious Sounds & Names'}</span>
           </button>
         </form>

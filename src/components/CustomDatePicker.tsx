@@ -8,9 +8,10 @@ interface CustomDatePickerProps {
   value: string;
   onChange: (date: string) => void;
   className?: string;
+  maxDate?: Date | null;
 }
 
-export function CustomDatePicker({ value, onChange, className = '' }: CustomDatePickerProps) {
+export function CustomDatePicker({ value, onChange, className = '', maxDate }: CustomDatePickerProps) {
   const selectedDate = value ? new Date(value) : null;
 
   const handleChange = (date: Date | null) => {
@@ -33,15 +34,15 @@ export function CustomDatePicker({ value, onChange, className = '' }: CustomDate
         onChange={handleChange}
         dateFormat="dd/MM/yyyy"
         placeholderText="DD/MM/YYYY"
-        className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-14 rounded-xl px-4 pl-12 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer"
+        className="w-full bg-white border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-slate-800 h-12 sm:h-14 rounded-2xl sm:rounded-xl px-4 pl-11 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer text-sm font-medium"
         wrapperClassName="w-full"
         showYearDropdown
         scrollableYearDropdown
         yearDropdownItemNumber={100}
-        maxDate={new Date()}
+        maxDate={maxDate !== undefined ? (maxDate === null ? undefined : maxDate) : new Date()}
         withPortal
       />
-      <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+      <Calendar size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
       
       <style>{`
         .react-datepicker-wrapper {

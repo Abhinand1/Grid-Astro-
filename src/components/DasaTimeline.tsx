@@ -9,17 +9,7 @@ interface DasaTimelineProps {
   color: 'blue' | 'pink';
 }
 
-/**
- * ⚡ Bolt Performance Optimization
- * Wrapped DasaTimeline in React.memo()
- *
- * 🎯 Why: This component iterates over a timeline array and renders several motion elements.
- * Unnecessary re-renders when parent state updates will trigger reconciliation of all timeline nodes.
- *
- * 📊 Impact: Avoids re-rendering the full timeline array unless its props actually change,
- * improving perceived UI responsiveness and saving CPU time.
- */
-export const DasaTimeline = React.memo(function DasaTimeline({ title, timeline, color }: DasaTimelineProps) {
+export function DasaTimeline({ title, timeline, color }: DasaTimelineProps) {
   const accentColor = color === 'pink' ? 'bg-pink-500' : 'bg-blue-500';
   const textColor = color === 'pink' ? 'text-pink-600' : 'text-blue-600';
   const bgColor = color === 'pink' ? 'bg-pink-50' : 'bg-blue-50';
@@ -82,4 +72,4 @@ export const DasaTimeline = React.memo(function DasaTimeline({ title, timeline, 
       </div>
     </div>
   );
-});
+}

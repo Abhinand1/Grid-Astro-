@@ -1,5 +1,5 @@
-import * as Astronomy from 'astronomy-engine';
-import { getPlanetSiderealLongitude } from './astronomy';
+import { evaluateMarriageMatch, KeralaMatchEvaluationReport } from './keralaMatchEngine';
+import { NAKSHATRAS } from './astroData';
 
 export interface IndepthReport {
   papasamyam: {
@@ -21,210 +21,67 @@ export interface IndepthReport {
     description: string;
   };
   overallRecommendation: string;
-}
-
-function parseDate(dob: string, time: string): Date {
-  if (!dob || !time) return new Date(); // Fallback to current date if missing
-  const [year, month, day] = dob.split('-').map(Number);
-  const [hours, minutes] = time.split(':').map(Number);
-  
-  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
-    return new Date(); // Fallback to current date if invalid
-  }
-  
-  // Assuming IST (+05:30)
-  return new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
-}
-
-function getRasi(longitude: number): number {
-  return Math.floor(longitude / 30);
-}
-
-function getHouse(planetRasi: number, referenceRasi: number): number {
-  let house = planetRasi - referenceRasi + 1;
-  if (house <= 0) house += 12;
-  return house;
-}
-
-function calculatePapasamyam(date: Date) {
-  const papaPlanets = [
-    Astronomy.Body.Sun,
-    Astronomy.Body.Mars,
-    Astronomy.Body.Saturn,
-    'Rahu' as const,
-    'Ketu' as const
-  ];
-
-  const moonLon = getPlanetSiderealLongitude(Astronomy.Body.Moon, date);
-  const venusLon = getPlanetSiderealLongitude(Astronomy.Body.Venus, date);
-  
-  const moonRasi = getRasi(moonLon);
-  const venusRasi = getRasi(venusLon);
-
-  let score = 0;
-  let hasChovvaDosham = false;
-
-  const doshaHouses = [1, 2, 4, 7, 8, 12];
-
-  for (const planet of papaPlanets) {
-    const lon = getPlanetSiderealLongitude(planet, date);
-    const rasi = getRasi(lon);
-
-    const houseFromMoon = getHouse(rasi, moonRasi);
-    const houseFromVenus = getHouse(rasi, venusRasi);
-
-    if (doshaHouses.includes(houseFromMoon)) {
-      score += 1; // 1 point from Moon
-      if (planet === Astronomy.Body.Mars && [7, 8].includes(houseFromMoon)) {
-        hasChovvaDosham = true;
-      }
-    }
-    
-    if (doshaHouses.includes(houseFromVenus)) {
-      score += 0.5; // 0.5 points from Venus
-    }
-  }
-
-  return { score, hasChovvaDosham };
-}
-
-// Dasa Sandhi: Check if the couple's Dasa changes happen within 1 year of each other.
-// A simple approximation based on birth star and date.
-function calculateDasaSandhi(boyDate: Date, girlDate: Date, boyStarId: number, girlStarId: number) {
-  // Dasa sequence and their years
-  const dasaYears = [
-    7,  // Ketu
-    20, // Venus
-    6,  // Sun
-    10, // Moon
-    7,  // Mars
-    18, // Rahu
-    16, // Jupiter
-    19, // Saturn
-    17  // Mercury
-  ];
-
-  // Star ID 1 is Ashwini (Ketu dasa). 
-  // Dasa index = Math.floor((starId - 1) / 3) % 9
-  // Wait, Ashwini, Makam, Moolam are Ketu.
-  // Star IDs: 1, 10, 19 -> (1-1)%9 = 0, (10-1)%9 = 0, (19-1)%9 = 0.
-  // So dasaIndex = (starId - 1) % 9;
-  
-  const getDasaEndAges = (starId: number, birthDate: Date) => {
-    const dasaIndex = (starId - 1) % 9;
-    const currentDasaYears = dasaYears[dasaIndex];
-    
-    // Real calculation: exact moon longitude within the star (13°20' = 13.3333°)
-    const moonLon = getPlanetSiderealLongitude(Astronomy.Body.Moon, birthDate);
-    const starStartLon = (starId - 1) * (360 / 27);
-    let degreesPassed = moonLon - starStartLon;
-    if (degreesPassed < 0) degreesPassed += 360; // Just in case
-
-    const fractionRemaining = 1 - (degreesPassed / (360 / 27));
-    // Ensure fraction is between 0 and 1
-    const safeFraction = Math.max(0, Math.min(1, fractionRemaining));
-
-    let remainingYears = currentDasaYears * safeFraction;
-    
-    const endAges = [];
-    let currentAge = remainingYears;
-    endAges.push(currentAge);
-    
-    for (let i = 1; i < 5; i++) { // Next 4 dasas
-      const nextDasaIndex = (dasaIndex + i) % 9;
-      currentAge += dasaYears[nextDasaIndex];
-      endAges.push(currentAge);
-    }
-    return endAges;
-  };
-
-  const boyAges = getDasaEndAges(boyStarId, boyDate);
-  const girlAges = getDasaEndAges(girlStarId, girlDate);
-  
-  const boyBirthYear = boyDate.getFullYear();
-  const girlBirthYear = girlDate.getFullYear();
-
-  let hasIssue = false;
-  
-  // Check if any dasa end year is within 1 year of each other
-  for (const bAge of boyAges) {
-    const bYear = boyBirthYear + bAge;
-    for (const gAge of girlAges) {
-      const gYear = girlBirthYear + gAge;
-      if (Math.abs(bYear - gYear) <= 1.5) { // 1.5 years threshold
-        hasIssue = true;
-        break;
-      }
-    }
-    if (hasIssue) break;
-  }
-
-  return hasIssue;
+  evaluationReport?: KeralaMatchEvaluationReport;
 }
 
 export async function calculateIndepth(boy: any, girl: any): Promise<IndepthReport> {
-  // Simulate network/calculation delay for UI feedback
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  const boyStar = NAKSHATRAS.find(n => n.id === boy.starId) || NAKSHATRAS[0];
+  const girlStar = NAKSHATRAS.find(n => n.id === girl.starId) || NAKSHATRAS[0];
 
-  const boyDate = parseDate(boy.dob, boy.time);
-  const girlDate = parseDate(girl.dob, girl.time);
-  
-  const boyStarId = boy.starId || 1;
-  const girlStarId = girl.starId || 1;
-  
-  const boyPapa = calculatePapasamyam(boyDate);
-  const girlPapa = calculatePapasamyam(girlDate);
-  
-  // Boy should ideally have slightly more or equal papam than girl.
-  const isPapasamyamCompatible = boyPapa.score >= girlPapa.score - 1.5;
+  const report = evaluateMarriageMatch({
+    girl: {
+      name: girl.name || 'Bride',
+      nakshatra: girlStar.name,
+      nakshatra_index: girlStar.id,
+      pada: girl.pada || 1,
+      chandra_rasi: girl.rasi || girlStar.defaultRashi,
+      dob: girl.dob,
+      time: girl.time
+    },
+    boy: {
+      name: boy.name || 'Groom',
+      nakshatra: boyStar.name,
+      nakshatra_index: boyStar.id,
+      pada: boy.pada || 1,
+      chandra_rasi: boy.rasi || boyStar.defaultRashi,
+      dob: boy.dob,
+      time: boy.time
+    }
+  });
 
-  const hasChovvaDosham = boyPapa.hasChovvaDosham || girlPapa.hasChovvaDosham;
-  const hasDasaSandhi = calculateDasaSandhi(boyDate, girlDate, boyStarId, girlStarId);
-  
-  // Madhamaranju is a specific dosha when certain stars marry.
-  // E.g., Makam and Pooram, etc. We'll use a deterministic mock for this one.
-  // Madhamaranju dosha rule in Kerala: When Makam marries Pooram, etc.
-  // Actually, standard Madhamaranju occurs in certain specific pairs like Makam-Pooram, Aswathi-Bharani, etc.
-  // For precise Kerala logic, we flag specific adjacent star pairs from same Rasi.
-  const hasMadhamaranju = Math.abs(boyStarId - girlStarId) === 1 &&
-    (Math.floor((boyStarId - 1) / 2.25) === Math.floor((girlStarId - 1) / 2.25));
+  const boyScore = report.papasamya_result.boy_points;
+  const girlScore = report.papasamya_result.girl_points;
+  const isPapasamyamCompatible = report.papasamya_result.status !== 'DEFICIT' || Math.abs(report.papasamya_result.difference) <= 1.0;
 
-  let recommendation = '';
-  if (isPapasamyamCompatible && !hasChovvaDosham && !hasDasaSandhi) {
-    recommendation = 'വിവാഹം കഴിക്കാവുന്നതാണ് (Highly Recommended)';
-  } else if (!isPapasamyamCompatible) {
-    recommendation = 'പാപസാമ്യം ഇല്ലാത്തതിനാൽ ഒഴിവാക്കുക (Not Recommended due to Papasamyam)';
-  } else {
-    recommendation = 'കൂടുതൽ ജ്യോതിഷ പരിശോധനകൾ ആവശ്യമാണ് (Needs further expert consultation)';
-  }
+  const hasChovvaDosham = report.chovva_dosha_result.girl_status === 'ACTIVE_DOSHA' || report.chovva_dosha_result.boy_status === 'ACTIVE_DOSHA';
+  const hasDasaSandhi = report.dasa_sandhi_result.status === 'NOT_RECOMMENDED_CRITICAL_COLLISION';
+
+  // Madhamaranju Dosha:
+  // In classical Kerala Jyothisham, Madhamaranju occurs if Makam and Pooram marry (Chingam stars) or specific star pairs under single sign affliction.
+  const hasMadhamaranju = (boyStar.id === 10 && girlStar.id === 11) || (boyStar.id === 11 && girlStar.id === 10);
 
   return {
     papasamyam: {
-      boyScore: boyPapa.score,
-      girlScore: girlPapa.score,
+      boyScore,
+      girlScore,
       isCompatible: isPapasamyamCompatible,
-      description: isPapasamyamCompatible 
-        ? 'പാപസാമ്യം തൃപ്തികരമാണ് (Papasamyam is balanced)' 
-        : 'പാപസാമ്യം പൊരുത്തപ്പെടുന്നില്ല (Papasamyam mismatch)'
+      description: report.papasamya_result.description
     },
     chovvaDosham: {
       hasDosham: hasChovvaDosham,
-      description: hasChovvaDosham 
-        ? 'ചൊവ്വാ ദോഷം ഉണ്ട് (Chovva Dosham present)' 
-        : 'ചൊവ്വാ ദോഷം ഇല്ല (No Chovva Dosham)'
+      description: report.chovva_dosha_result.description
     },
     dasaSandhi: {
       hasIssue: hasDasaSandhi,
-      description: hasDasaSandhi 
-        ? 'ദശാസന്ധി ദോഷം ഉണ്ട് (Dasa Sandhi issue present)' 
-        : 'ദശാസന്ധി ദോഷം ഇല്ല (No Dasa Sandhi issue)'
+      description: report.dasa_sandhi_result.description
     },
     madhamaranju: {
       hasIssue: hasMadhamaranju,
-      description: hasMadhamaranju 
-        ? 'മദമറഞ്ഞു ദോഷം കാണുന്നു (Madhamaranju issue detected)' 
-        : 'മദമറഞ്ഞു ദോഷം ഇല്ല (No Madhamaranju issue)'
+      description: hasMadhamaranju
+        ? 'മദമറഞ്ഞു ദോഷം കാണുന്നു (Madhamaranju Dosha: Magha-Purva Phalguni friction).'
+        : 'മദമറഞ്ഞു ദോഷം ഇല്ല (No Madhamaranju dosha detected).'
     },
-    overallRecommendation: recommendation
+    overallRecommendation: report.final_verdict.summary,
+    evaluationReport: report
   };
 }

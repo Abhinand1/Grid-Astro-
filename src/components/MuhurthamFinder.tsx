@@ -7,17 +7,7 @@ interface MuhurthamFinderProps {
   muhurthams: MuhurthamDate[];
 }
 
-/**
- * ⚡ Bolt Performance Optimization
- * Wrapped MuhurthamFinder in React.memo()
- *
- * 🎯 Why: Rendering lists with complex motion elements can be expensive. Since muhurthams
- * array is static once fetched, there's no need to re-render this on unrelated parent state changes.
- *
- * 📊 Impact: Prevents unnecessary re-renders of the entire Muhurtham list and associated Framer Motion
- * animations, saving CPU cycles when parent components re-render.
- */
-export const MuhurthamFinder = React.memo(function MuhurthamFinder({ muhurthams }: MuhurthamFinderProps) {
+export function MuhurthamFinder({ muhurthams }: MuhurthamFinderProps) {
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
       <div className="flex items-center gap-3 mb-6">
@@ -71,4 +61,4 @@ export const MuhurthamFinder = React.memo(function MuhurthamFinder({ muhurthams 
       </div>
     </div>
   );
-});
+}

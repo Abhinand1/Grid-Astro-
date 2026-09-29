@@ -8,8 +8,15 @@ const astroWorker = {
   calculateIndepth: async (boy: any, girl: any) => {
     return await calculateIndepth(boy, girl);
   },
-  calculatePorutham: (boyStarId: number, girlStarId: number) => {
-    return calculatePorutham(boyStarId, girlStarId);
+  calculatePorutham: (
+    girlStarId: number, 
+    boyStarId: number,
+    girlPada: number = 1,
+    boyPada: number = 1,
+    girlRasi?: string,
+    boyRasi?: string
+  ) => {
+    return calculatePorutham(girlStarId, boyStarId, girlPada, boyPada, girlRasi, boyRasi);
   },
   calculateDasaTimeline: (starId: number, dob: string) => {
     return calculateDasaTimeline(starId, dob);

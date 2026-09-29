@@ -19,6 +19,15 @@ import { DasaTimeline } from './components/DasaTimeline';
 import { MuhurthamFinder } from './components/MuhurthamFinder';
 import { DailyHoroscopeModal } from './components/DailyHoroscopeModal';
 import { PoruthamDetailModal } from './components/PoruthamDetailModal';
+import { HousewarmingView } from './components/HousewarmingView';
+import { GeneralHoroscopeView } from './components/GeneralHoroscopeView';
+import { VahanaMuhurthamView } from './components/VahanaMuhurthamView';
+import { BabyNamingView } from './components/BabyNamingView';
+import { PrashnaKundaliView } from './components/PrashnaKundaliView';
+import { TransitForecastView } from './components/TransitForecastView';
+import { BhoomiPujaView } from './components/BhoomiPujaView';
+import { EarlyLifeSamskarasView } from './components/EarlyLifeSamskarasView';
+import { VyaparMuhurthamView } from './components/VyaparMuhurthamView';
 import { CustomSelect } from './components/CustomSelect';
 import { CustomDatePicker } from './components/CustomDatePicker';
 import { CustomTimePicker } from './components/CustomTimePicker';
@@ -36,24 +45,65 @@ const astroWorker = Comlink.wrap<AstroWorker>(worker);
 
 const ZODIAC_SIGNS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 
-type ViewState = 'home' | 'form' | 'basic' | 'chart' | 'muhurtham' | 'analysis' | 'janam-kundli' | 'about' | 'privacy' | 'contact' | 'terms' | 'help';
+type ViewState = 
+  | 'home' 
+  | 'form' 
+  | 'basic' 
+  | 'chart' 
+  | 'muhurtham' 
+  | 'analysis' 
+  | 'janam-kundli' 
+  | 'housewarming' 
+  | 'general-horoscope' 
+  | 'vahana-muhurtham' 
+  | 'baby-naming' 
+  | 'prashna-kundali' 
+  | 'transit-forecast' 
+  | 'bhoomi-puja' 
+  | 'early-life-samskaras' 
+  | 'vyapar-muhurtham' 
+  | 'about' 
+  | 'privacy' 
+  | 'contact' 
+  | 'terms' 
+  | 'help';
 
 export default function App() {
   const { lang, setLang, t } = useLanguage();
-  const [boyDetails, setBoyDetails] = useState({
+  const [boyDetails, setBoyDetails] = useState<{
+    name: string;
+    dob: string;
+    time: string;
+    place: string;
+    starId: number;
+    pada?: number;
+    rasi?: string;
+  }>({
     name: 'അർജുൻ (Arjun)',
     dob: '1994-05-20',
     time: '14:30',
     place: 'Palakkad',
-    starId: 25 // Poororuttathi
+    starId: 25, // Poororuttathi
+    pada: 1,
+    rasi: ''
   });
 
-  const [girlDetails, setGirlDetails] = useState({
+  const [girlDetails, setGirlDetails] = useState<{
+    name: string;
+    dob: string;
+    time: string;
+    place: string;
+    starId: number;
+    pada?: number;
+    rasi?: string;
+  }>({
     name: 'ശ്രേയ (Shreya)',
     dob: '1997-11-05',
     time: '09:45',
     place: 'Thrissur',
-    starId: 4 // Rohini
+    starId: 4, // Rohini
+    pada: 1,
+    rasi: ''
   });
 
   const [matchResult, setMatchResult] = useState<MatchReport | null>(null);
@@ -156,19 +206,19 @@ export default function App() {
       return;
     }
 
-    const result = await astroWorker.calculatePorutham(girlDetails.starId, boyDetails.starId);
+    const result = await astroWorker.calculatePorutham(
+      girlDetails.starId, 
+      boyDetails.starId,
+      girlDetails.pada || 1,
+      boyDetails.pada || 1,
+      girlDetails.rasi,
+      boyDetails.rasi
+    );
     setMatchResult(result);
     setView('basic');
   };
 
   const handleIndepthCheck = async () => {
-    if (!boyDetails.time || !girlDetails.time) {
-      // Use existing alert pattern but maybe we should show an inline error message for better UX?
-      // For now, keeping as alert as standard to app but improving the text
-      alert("Please provide the exact birth time for both partners to generate an accurate In-Depth Analysis (Papasamyam and Dasa Sandhi require precise Moon and Venus degrees).");
-      return;
-    }
-
     setIsLoadingIndepth(true);
     try {
       const result = await astroWorker.calculateIndepth(boyDetails, girlDetails);
@@ -418,8 +468,8 @@ export default function App() {
       
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* TopAppBar */}
-        <header className="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100/50 shadow-sm flex justify-between items-center px-6 h-14 shrink-0 font-['Plus_Jakarta_Sans'] font-medium">
-        <div className="flex items-center gap-3">
+        <header className="sticky top-0 w-full z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100/50 shadow-sm flex justify-between items-center px-4 sm:px-6 h-14 shrink-0 font-['Plus_Jakarta_Sans'] font-medium">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <button 
             onClick={() => {
               haptic.light();
@@ -434,8 +484,8 @@ export default function App() {
               else if (view === 'muhurtham') setView('analysis');
               else setView('home');
             }}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
-            aria-label={view === 'home' ? 'Open menu' : 'Go back'}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 active:scale-95 transition-all shrink-0"
+            aria-label="Navigation Menu"
           >
             <span className="material-symbols-outlined text-slate-700 text-[22px]">
               {view === 'home' ? 'menu' : 'arrow_back'}
@@ -443,33 +493,32 @@ export default function App() {
           </button>
           <div 
             onClick={() => setView('home')}
-            className="text-lg tracking-tight text-slate-900 flex items-center justify-center gap-0.5 [&_span:first-child]:font-bold [&_span:last-child]:font-light cursor-pointer"
+            className="text-lg tracking-tight text-slate-900 flex items-center justify-center gap-0.5 [&_span:first-child]:font-bold [&_span:last-child]:font-light cursor-pointer select-none"
           >
             <span>Grid</span><span>Astro</span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             onClick={() => {
               haptic.light();
               setLang(lang === 'en' ? 'ml' : 'en');
             }}
-            className="px-2 py-1 text-[10px] font-bold text-primary bg-primary/10 rounded-md uppercase tracking-wider"
-            aria-label={`Switch language to ${lang === 'en' ? 'Malayalam' : 'English'}`}
+            className="px-2.5 py-1 text-[10px] font-bold text-primary bg-primary/10 rounded-lg uppercase tracking-wider shrink-0 active:scale-95 transition-transform"
           >
             {lang === 'en' ? 'മലയാളം' : 'EN'}
           </button>
-          <div className="flex flex-col items-end justify-center leading-none">
+          <div className="flex flex-col items-end justify-center leading-none min-w-0">
             <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-primary/70 mb-0.5">Nakshatra</span>
-            <span className="text-[10px] font-black text-slate-900 leading-none">{lang === 'ml' ? currentNakshatra.malayalamName : currentNakshatra.name}</span>
-            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+            <span className="text-[10px] font-black text-slate-900 leading-none truncate max-w-[85px] sm:max-w-none">{lang === 'ml' ? currentNakshatra.malayalamName : currentNakshatra.name}</span>
+            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1 whitespace-nowrap">
               {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 px-6 max-w-xl mx-auto w-full overflow-x-hidden pt-8 pb-24">
+      <main className="flex-1 px-4 sm:px-6 max-w-xl mx-auto w-full overflow-x-hidden pt-6 sm:pt-8 pb-24">
         <AnimatePresence mode="wait">
           {view === 'home' && (
             <motion.div
@@ -571,35 +620,196 @@ export default function App() {
                 </div>
               </section>
 
-              {/* Vedic Insights */}
-              <section className="mb-12">
-                <h2 className="text-2xl font-bold mb-6">{t('home.vedic_insights')}</h2>
-                <div className="grid grid-cols-2 gap-4">
+              {/* Vedic Insights & Services */}
+              <section className="mb-10 sm:mb-12">
+                <div className="flex justify-between items-center mb-5 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">{t('home.vedic_insights')}</h2>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full shrink-0">
+                    {lang === 'ml' ? 'ആധികാരിക ജ്യോതിഷം' : 'Panchangam'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+                  {/* Daily Horoscope */}
                   <div 
                     onClick={() => { haptic.light(); setIsDailyHoroscopeOpen(true); }}
-                    className="col-span-2 bg-white rounded-[24px] p-6 shadow-sm border-b-4 border-primary/10 relative overflow-hidden cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+                    className="col-span-2 bg-white rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 shadow-sm border border-slate-100 relative overflow-hidden cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
                   >
                     <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-12">
-                        <span className="material-symbols-outlined text-3xl text-primary">auto_awesome</span>
-                        <span className="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full font-bold uppercase">{t('home.live_reading')}</span>
+                      <div className="flex justify-between items-start mb-4 sm:mb-6">
+                        <span className="material-symbols-outlined text-2xl sm:text-3xl text-primary">auto_awesome</span>
+                        <span className="bg-primary/10 text-primary text-[10px] px-2.5 sm:px-3 py-1 rounded-full font-bold uppercase shrink-0">{t('home.live_reading')}</span>
                       </div>
-                      <h4 className="text-xl font-bold mb-1">{t('home.daily')}</h4>
-                      <p className="text-sm text-on-surface-variant">{t('home.daily_desc')}</p>
-                    </div>
-                    <div className="absolute bottom-[-20%] right-[-10%] opacity-10 pointer-events-none">
-                      <img className="w-40 rotate-12" alt="Vedic diagram" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcPmYVMPJpDDrtD3NBp4EEQROZjQ0BdoadWWixtufK5EsTgGyXWE8HCiK3ZhlAbtP7hMiXpFNA-qRJYYK8Hpilj_txtInCjbzMeCoFytLlwwvLDODUsku5tZMGP4c1oOeWp8hWZpHZFlYLLl1nXIVk1_K7-nrbLkqiLWq72bSaGwsWVqiA2yZklUphpdz2IOrv9RELxNXLXbtcJkCAqeiTbHoNO2jDtSHkwdrHz3eca3vxZmssh-JRR_SR4WtiEjvmze637Y_vGw" referrerPolicy="no-referrer" />
+                      <h4 className="text-lg sm:text-xl font-bold mb-1 leading-tight">{t('home.daily')}</h4>
+                      <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">{t('home.daily_desc')}</p>
                     </div>
                   </div>
-                  <div className="bg-surface-container-low rounded-[24px] p-5">
-                    <span className="material-symbols-outlined text-primary mb-4">history_edu</span>
-                    <h4 className="font-bold text-sm mb-1">{t('home.keralite_tradition')}</h4>
-                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">{t('home.keralite_desc')}</p>
+
+                  {/* Housewarming Muhurtham */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('housewarming'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">cottage</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'ഗൃഹപ്രവേശം' : 'Housewarming'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'ഉത്തമ മുഹൂർത്തങ്ങൾ' : 'Grihapravesham Dates'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-amber-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'പരിശോധിക്കുക' : 'Check Dates'} →
+                    </span>
                   </div>
-                  <div className="bg-surface-container-low rounded-[24px] p-5">
-                    <span className="material-symbols-outlined text-primary mb-4">timeline</span>
-                    <h4 className="font-bold text-sm mb-1">{t('home.dasa_timeline')}</h4>
-                    <p className="text-xs text-on-surface-variant opacity-70 leading-relaxed">{t('home.dasa_desc')}</p>
+
+                  {/* General Horoscope */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('general-horoscope'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">psychology</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'പൊതു ജാതകം' : 'General Horoscope'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'സ്വഭാവവും ജീവിത ഫലങ്ങളും' : 'Life & Career Reading'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-primary mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'വായിക്കുക' : 'Read Chart'} →
+                    </span>
+                  </div>
+
+                  {/* Vehicle Muhurtham */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('vahana-muhurtham'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/10 text-blue-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">directions_car</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'വാഹന മുഹൂർത്തം' : 'Vehicle Muhurtham'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'വാഹനം വാങ്ങാൻ ശുഭദിനങ്ങൾ' : 'Vehicle Purchase Dates'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-blue-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'കണ്ടെത്തുക' : 'Find Dates'} →
+                    </span>
+                  </div>
+
+                  {/* Baby Naming */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('baby-naming'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">child_care</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'നാമകരണം' : 'Baby Naming'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'നക്ഷത്ര പാദാക്ഷരങ്ങൾ' : 'Sacred Seed Sounds'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-rose-600 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'തുടങ്ങുക' : 'Explore'} →
+                    </span>
+                  </div>
+
+                  {/* Prashna Kundali */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('prashna-kundali'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/10 text-purple-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">help_outline</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'പ്രശ്ന കുണ്ഡലി' : 'Prashna Kundali'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'തത്സമയ ചോദ്യ വിചാരം' : 'Instant Horary Query'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-purple-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'ചോദിക്കുക' : 'Ask Query'} →
+                    </span>
+                  </div>
+
+                  {/* Transit Forecast & Sade Sati */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('transit-forecast'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/10 text-indigo-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">track_changes</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'ഗോചാര ഫലം' : 'Transits & Sade Sati'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'ശനി & വ്യാഴ മാറ്റങ്ങൾ' : 'Planetary Movement'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'പരിശോധിക്കുക' : 'View Impact'} →
+                    </span>
+                  </div>
+
+                  {/* Vyapar Muhurtham */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('vyapar-muhurtham'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">storefront</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'വ്യാപാര മുഹൂർത്തം' : 'Business Launch'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'സ്ഥാപനം തുടങ്ങാൻ' : 'Vyapar Muhurta'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-emerald-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'കണ്ടെത്തുക' : 'Find Dates'} →
+                    </span>
+                  </div>
+
+                  {/* Bhoomi Puja */}
+                  <div 
+                    onClick={() => { haptic.light(); setView('bhoomi-puja'); }}
+                    className="bg-white rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-[0.98] flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-700 flex items-center justify-center mb-2.5 sm:mb-3 shrink-0">
+                        <span className="material-symbols-outlined text-xl sm:text-2xl">foundation</span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm mb-1 text-slate-900 leading-tight">
+                        {lang === 'ml' ? 'ഭൂമിപൂജ' : 'Bhoomi Puja'}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                        {lang === 'ml' ? 'തറക്കല്ലിടൽ മുഹൂർത്തം' : 'Foundation Laying'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-amber-700 mt-2.5 sm:mt-3 inline-flex items-center gap-1">
+                      {lang === 'ml' ? 'പരിശോധിക്കുക' : 'Check Dates'} →
+                    </span>
                   </div>
                 </div>
               </section>
@@ -898,20 +1108,6 @@ export default function App() {
               {/* Detailed Breakdown */}
               <section className="space-y-4 mt-8">
                 <h2 className="text-xl font-bold px-1">{t('result.porutham')}</h2>
-
-                {/* VETO Dosha Alerts */}
-                {matchResult && (matchResult.results.find(r => r.name === 'Rajju')?.status === 'Adhamam' || matchResult.results.find(r => r.name === 'Vedha')?.status === 'Adhamam') && (
-                  <div className="bg-error-container/20 border-2 border-error/30 rounded-3xl p-5 mb-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="material-symbols-outlined text-error text-2xl">warning</span>
-                      <h3 className="font-bold text-error text-lg">Critical Match Failure</h3>
-                    </div>
-                    <p className="text-error/90 text-sm leading-relaxed">
-                      This match fails mandatory conditions (Rajju or Vedha Dosham). It is highly discouraged regardless of the total score.
-                    </p>
-                  </div>
-                )}
-
                 <div className="grid gap-4">
                   {matchResult && matchResult.results.map((res, idx) => (
                     <div 
@@ -1156,7 +1352,6 @@ export default function App() {
                   <button 
                     onClick={() => { haptic.light(); setView('analysis'); }}
                     className="w-14 h-14 bg-gradient-to-tr from-primary to-primary-container rounded-full shadow-lg shadow-primary/30 flex items-center justify-center text-white active:scale-90 transition-transform duration-150"
-                    aria-label="Back to analysis"
                   >
                     <span className="material-symbols-outlined text-2xl">arrow_back</span>
                   </button>
@@ -1771,6 +1966,132 @@ export default function App() {
             </div>
           </motion.div>
         )}
+
+        {/* Housewarming Muhurtham View */}
+        {view === 'housewarming' && (
+          <motion.div
+            key="housewarming"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <HousewarmingView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* General Horoscope View */}
+        {view === 'general-horoscope' && (
+          <motion.div
+            key="general-horoscope"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <GeneralHoroscopeView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Vehicle Muhurtham View */}
+        {view === 'vahana-muhurtham' && (
+          <motion.div
+            key="vahana-muhurtham"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <VahanaMuhurthamView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Baby Naming View */}
+        {view === 'baby-naming' && (
+          <motion.div
+            key="baby-naming"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <BabyNamingView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Prashna Kundali View */}
+        {view === 'prashna-kundali' && (
+          <motion.div
+            key="prashna-kundali"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <PrashnaKundaliView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Transit & Sade Sati View */}
+        {view === 'transit-forecast' && (
+          <motion.div
+            key="transit-forecast"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <TransitForecastView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Bhoomi Puja & Foundation View */}
+        {view === 'bhoomi-puja' && (
+          <motion.div
+            key="bhoomi-puja"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <BhoomiPujaView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Early Life Samskaras View */}
+        {view === 'early-life-samskaras' && (
+          <motion.div
+            key="early-life-samskaras"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <EarlyLifeSamskarasView onBack={() => setView('home')} />
+          </motion.div>
+        )}
+
+        {/* Vyapar / Business Launch Muhurtham View */}
+        {view === 'vyapar-muhurtham' && (
+          <motion.div
+            key="vyapar-muhurtham"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 max-w-xl mx-auto w-full"
+          >
+            <VyaparMuhurthamView onBack={() => setView('home')} />
+          </motion.div>
+        )}
         </AnimatePresence>
 
 
@@ -1805,7 +2126,6 @@ export default function App() {
                   <button 
                     onClick={() => setSelectedExplanation(null)}
                     className="p-2 rounded-2xl bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors"
-                    aria-label="Close explanation"
                   >
                     <span className="material-symbols-outlined">close</span>
                   </button>
@@ -1856,85 +2176,121 @@ export default function App() {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-[101] shadow-2xl flex flex-col"
+            className="fixed top-0 left-0 bottom-0 w-[290px] max-w-[85vw] bg-white z-[101] shadow-2xl flex flex-col"
           >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-br from-primary/5 to-transparent">
+              <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="text-xl tracking-tight text-slate-900 flex items-center gap-0.5 [&_span:first-child]:font-bold [&_span:last-child]:font-light">
                   <span>Grid</span><span>Astro</span>
                 </div>
                 <button 
                   onClick={() => setIsMenuOpen(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
+                  className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 active:scale-95 transition-all shrink-0"
                   aria-label="Close menu"
                 >
                   <span className="material-symbols-outlined text-slate-500">close</span>
                 </button>
               </div>
               
-              <div className="flex-1 overflow-y-auto py-6">
-                <div className="px-4 mb-6">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">{t('nav.main_menu')}</p>
+              <div className="flex-1 overflow-y-auto py-4 sm:py-5">
+                {/* Main Navigation */}
+                <div className="px-3.5 sm:px-4 mb-4 sm:mb-5">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5 px-2">{t('nav.main_menu')}</p>
                   <nav className="space-y-1">
                     {[
-                      { icon: 'home', label: t('nav.home'), view: 'home' },
-                      { icon: 'favorite', label: t('nav.compatibility'), view: 'form' },
-                      { icon: 'grid_view', label: t('nav.rashi_chart'), view: 'chart' },
-                      { icon: 'auto_awesome', label: t('nav.janam_kundli'), view: 'janam-kundli' },
+                      { id: 'home', icon: 'home', label: t('nav.home'), view: 'home' },
+                      { id: 'compatibility', icon: 'favorite', label: t('nav.compatibility'), view: 'form' },
+                      { id: 'chart', icon: 'grid_view', label: t('nav.rashi_chart'), view: 'chart' },
+                      { id: 'kundli', icon: 'auto_awesome', label: t('nav.janam_kundli'), view: 'janam-kundli' },
                     ].map((item) => (
                       <button
-                        key={item.label}
+                        key={item.id}
                         onClick={() => {
                           setView(item.view as ViewState);
                           setIsMenuOpen(false);
                         }}
-                        className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all ${
-                          view === item.view ? 'bg-primary/10 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all min-h-[44px] ${
+                          view === item.view ? 'bg-primary/10 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
                         }`}
                       >
-                        <span className="material-symbols-outlined">{item.icon}</span>
-                        <span className="text-sm">{item.label}</span>
+                        <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
+                        <span className="text-sm truncate text-left flex-1 min-w-0 leading-tight">{item.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+
+                {/* Essential Vedic Astrology Services */}
+                <div className="px-3.5 sm:px-4 mb-4 sm:mb-5">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5 px-2">{t('nav.astrology_services')}</p>
+                  <nav className="space-y-1">
+                    {[
+                      { id: 'housewarming', icon: 'cottage', label: t('nav.housewarming'), view: 'housewarming' },
+                      { id: 'general-horoscope', icon: 'psychology', label: t('nav.general_horoscope'), view: 'general-horoscope' },
+                      { id: 'prashna-kundali', icon: 'help_outline', label: t('nav.prashna_kundali'), view: 'prashna-kundali' },
+                      { id: 'transit-forecast', icon: 'track_changes', label: t('nav.transit_forecast'), view: 'transit-forecast' },
+                      { id: 'vyapar', icon: 'storefront', label: t('nav.vyapar_muhurtham'), view: 'vyapar-muhurtham' },
+                      { id: 'bhoomi', icon: 'foundation', label: t('nav.bhoomi_puja'), view: 'bhoomi-puja' },
+                      { id: 'vahana', icon: 'directions_car', label: t('nav.vahana_muhurtham'), view: 'vahana-muhurtham' },
+                      { id: 'naming', icon: 'child_care', label: t('nav.baby_naming'), view: 'baby-naming' },
+                      { id: 'samskaras', icon: 'school', label: t('nav.early_samskaras'), view: 'early-life-samskaras' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setView(item.view as ViewState);
+                          setIsMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl transition-all min-h-[44px] ${
+                          view === item.view ? 'bg-primary/10 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50 font-medium'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
+                        <span className="text-sm truncate text-left flex-1 min-w-0 leading-tight">{item.label}</span>
                       </button>
                     ))}
                   </nav>
                 </div>
                 
-                <div className="px-4 mb-6">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">{t('nav.company')}</p>
+                {/* Company & Info */}
+                <div className="px-3.5 sm:px-4 mb-4">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5 px-2">{t('nav.company')}</p>
                   <nav className="space-y-1">
                     {[
-                      { icon: 'info', label: t('nav.about'), view: 'about' },
-                      { icon: 'mail', label: t('nav.contact'), view: 'contact' },
-                      { icon: 'help', label: t('nav.help'), view: 'help' },
-                      { icon: 'policy', label: t('nav.privacy'), view: 'privacy' },
-                      { icon: 'gavel', label: t('nav.terms'), view: 'terms' },
+                      { id: 'about', icon: 'info', label: t('nav.about'), view: 'about' },
+                      { id: 'contact', icon: 'mail', label: t('nav.contact'), view: 'contact' },
+                      { id: 'help', icon: 'help', label: t('nav.help'), view: 'help' },
+                      { id: 'privacy', icon: 'policy', label: t('nav.privacy'), view: 'privacy' },
+                      { id: 'terms', icon: 'gavel', label: t('nav.terms'), view: 'terms' },
                     ].map((item) => (
                       <button
-                        key={item.label}
+                        key={item.id}
                         onClick={() => {
                           setView(item.view as ViewState);
                           setIsMenuOpen(false);
                         }}
-                        className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all"
+                        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all min-h-[44px] ${
+                          view === item.view ? 'bg-primary/10 text-primary font-bold' : 'text-slate-500 hover:bg-slate-50 font-medium'
+                        }`}
                       >
-                        <span className="material-symbols-outlined">{item.icon}</span>
-                        <span className="text-sm">{item.label}</span>
+                        <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
+                        <span className="text-sm truncate text-left flex-1 min-w-0 leading-tight">{item.label}</span>
                       </button>
                     ))}
                   </nav>
                 </div>
               </div>
               
-              <div className="p-6 border-t border-slate-100 bg-slate-50/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined">verified_user</span>
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <span className="material-symbols-outlined text-[20px]">verified_user</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Grid Astro Pro</p>
-                    <p className="text-[10px] text-slate-500">v1.2.0 • Premium</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-800 truncate">Grid Astro</p>
+                    <p className="text-[10px] text-slate-500 truncate">Vedic Precision • 2026</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-400 text-center">© 2026 Grid Astro. All rights reserved.</p>
+                <p className="text-[9px] text-slate-400 text-center">© 2026 Grid Astro. All rights reserved.</p>
               </div>
             </motion.div>
           )}
@@ -2151,7 +2507,6 @@ export default function App() {
                 <button 
                   onClick={() => setIsMuhurthamCalendarOpen(false)}
                   className="w-8 h-8 rounded-full bg-slate-200/50 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
-                  aria-label="Close calendar"
                 >
                   <X size={18} />
                 </button>

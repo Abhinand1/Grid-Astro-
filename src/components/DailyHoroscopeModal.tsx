@@ -73,7 +73,6 @@ export function DailyHoroscopeModal({ isOpen, onClose }: DailyHoroscopeModalProp
             <button 
               onClick={() => { haptic.light(); onClose(); }}
               className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
-              aria-label="Close daily horoscope"
             >
               <X size={20} />
             </button>

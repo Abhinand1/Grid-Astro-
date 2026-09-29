@@ -182,9 +182,19 @@ const translations = {
     'action.contact_support': 'Contact Support',
     'action.send_message': 'Send Message',
     'nav.home': 'Home',
-    'nav.compatibility': 'Compatibility',
+    'nav.compatibility': 'Horoscope Matching',
     'nav.rashi_chart': 'Rashi Chart',
     'nav.janam_kundli': 'Janam Kundli',
+    'nav.housewarming': 'Housewarming Muhurtham',
+    'nav.general_horoscope': 'General Horoscope',
+    'nav.vahana_muhurtham': 'Vehicle Muhurtham',
+    'nav.baby_naming': 'Baby Naming & Sounds',
+    'nav.prashna_kundali': 'Prashna Kundali (Horary)',
+    'nav.transit_forecast': 'Transits & Sade Sati',
+    'nav.bhoomi_puja': 'Bhoomi Puja & Foundation',
+    'nav.early_samskaras': 'Vidyarambha & Annaprashana',
+    'nav.vyapar_muhurtham': 'Business Launch (Vyapar)',
+    'nav.astrology_services': 'Vedic Astrology Services',
     'nav.about': 'About Us',
     'nav.contact': 'Contact Us',
     'nav.help': 'Help Center',
@@ -387,8 +397,27 @@ const translations = {
     'page.help.a3': 'അതെ, ഞങ്ങൾ എല്ലാ കണക്കുകൂട്ടലുകളും പ്രാദേശികമായി പ്രോസസ്സ് ചെയ്യുന്നു, നിങ്ങളുടെ വ്യക്തിഗത ജനന വിവരങ്ങൾ ഞങ്ങളുടെ സെർവറുകളിൽ സൂക്ഷിക്കുന്നില്ല.',
     'action.contact_support': 'പിന്തുണയുമായി ബന്ധപ്പെടുക',
     'action.send_message': 'സന്ദേശം അയക്കുക',
+    'nav.home': 'ഹോം',
+    'nav.compatibility': 'ജാതക പൊരുത്തം',
+    'nav.rashi_chart': 'രാശി ചക്രം',
+    'nav.janam_kundli': 'ജനന കുണ്ഡലി',
+    'nav.housewarming': 'ഗൃഹപ്രവേശം (മുഹൂർത്തം)',
+    'nav.general_horoscope': 'പൊതു ജാതക ഫലം',
+    'nav.vahana_muhurtham': 'വാഹന മുഹൂർത്തം',
+    'nav.baby_naming': 'നാമകരണവും നാമാക്ഷരങ്ങളും',
+    'nav.prashna_kundali': 'പ്രശ്ന കുണ്ഡലി (തത്സമയം)',
+    'nav.transit_forecast': 'ഗോചാര ഫലവും ശനി മാറ്റവും',
+    'nav.bhoomi_puja': 'ഭൂമിപൂജ & ശിലാസ്ഥാപനം',
+    'nav.early_samskaras': 'വിദ്യാരംഭവും അന്നപ്രാശവും',
+    'nav.vyapar_muhurtham': 'വ്യാപാര വ്യവസായ മുഹൂർത്തം',
+    'nav.astrology_services': 'പ്രധാന ജ്യോതിഷ സേവനങ്ങൾ',
+    'nav.about': 'ഞങ്ങളെക്കുറിച്ച്',
+    'nav.contact': 'ബന്ധപ്പെടുക',
+    'nav.help': 'സഹായ കേന്ദ്രം',
+    'nav.privacy': 'സ്വകാര്യതാ നയം',
+    'nav.terms': 'സേവന നിബന്ധനകൾ',
     'nav.main_menu': 'പ്രധാന മെനു',
-    'nav.company': 'കമ്പനി',
+    'nav.company': 'വിവരങ്ങൾ & കമ്പനി',
     'action.understood': 'മനസ്സിലായി',
     'nav.universe': 'പ്രപഞ്ചം',
     'nav.horoscope': 'ജാതകം',
@@ -419,8 +448,12 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [lang, setLang] = useState<Language>('en');
 
-  const t = (key: string) => {
-    return translations[lang][key as keyof typeof translations['en']] || key;
+  const t = (key: string): string => {
+    return (
+      translations[lang]?.[key as keyof typeof translations['en']] ||
+      translations['en']?.[key as keyof typeof translations['en']] ||
+      key
+    );
   };
 
   return (

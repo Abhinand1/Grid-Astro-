@@ -103,6 +103,14 @@
   -webkit-backdrop-filter: blur(20px);
 }
 
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 html {
   color-scheme: light only;
   -webkit-tap-highlight-color: transparent;

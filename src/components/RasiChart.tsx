@@ -52,18 +52,7 @@ const PLANET_ABBR: Record<string, string> = {
   "ലഗ്നം": "ല"
 };
 
-/**
- * ⚡ Bolt Performance Optimization
- * Wrapped RasiChart in React.memo()
- *
- * 🎯 Why: This component renders a complex 4x4 grid for the South Indian chart layout and
- * re-renders frequently when the parent state updates, even if its props (title, moonSign, planets)
- * haven't changed.
- *
- * 📊 Impact: Prevents unnecessary reconciliation of the 16 chart cells and their nested planet elements.
- * Expected to save ~2-5ms per unnecessary render cycle, especially noticeable during modal opens/closes.
- */
-export const RasiChart: React.FC<RasiChartProps> = React.memo(({ title, moonSign, planets = [] }) => {
+export const RasiChart: React.FC<RasiChartProps> = ({ title, moonSign, planets = [] }) => {
   const getPlanetsInSign = (rasiName: string) => {
     const p = planets.filter(p => p.rasi === rasiName).map(p => p.name);
     if (moonSign === rasiName) p.push("ചന്ദ്രൻ");
@@ -106,4 +95,4 @@ export const RasiChart: React.FC<RasiChartProps> = React.memo(({ title, moonSign
       <p className="text-center text-xs text-slate-400 mt-4">രാശി ചക്രം (Rasi Chart)</p>
     </div>
   );
-});
+};

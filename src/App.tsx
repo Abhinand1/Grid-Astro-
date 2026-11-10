@@ -7,7 +7,7 @@ import React, { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart, Calendar, Clock, MapPin, User, SunMedium, Compass, Flame, Scroll, Menu, ArrowRight, Star, ChevronDown, CheckCircle, XCircle, ShieldAlert, Scale, Activity, ArrowLeft, Loader2, Grid3X3, Info, X } from 'lucide-react';
 import { getCurrentNakshatra, getDayNakshatra, getKeralaDayPanchang } from './utils/astronomy';
-import { NAKSHATRAS } from './utils/astroData';
+import { NAKSHATRAS, getRasiFromNakshatraPada } from './utils/astroData';
 import { MatchReport, PoruthamResult } from './utils/porutham';
 import { IndepthReport } from './utils/indepth';
 import { RasiChart } from './components/RasiChart';
@@ -37,6 +37,7 @@ import { YatraMuhurthamView } from './components/YatraMuhurthamView';
 import { SpiritualInitiationView } from './components/SpiritualInitiationView';
 import { LitigationStrategyView } from './components/LitigationStrategyView';
 import { AstrometeorologyView } from './components/AstrometeorologyView';
+import { AdminPage } from './components/AdminPage';
 import { CustomSelect } from './components/CustomSelect';
 import { CustomDatePicker } from './components/CustomDatePicker';
 import { CustomTimePicker } from './components/CustomTimePicker';
@@ -102,7 +103,7 @@ export default function App() {
     place: 'Palakkad',
     starId: 25, // Poororuttathi
     pada: 1,
-    rasi: ''
+    rasi: 'Kumbham'
   });
 
   const [girlDetails, setGirlDetails] = useState<{
@@ -120,7 +121,7 @@ export default function App() {
     place: 'Thrissur',
     starId: 4, // Rohini
     pada: 1,
-    rasi: ''
+    rasi: 'Edavam'
   });
 
   const [matchResult, setMatchResult] = useState<MatchReport | null>(null);
@@ -137,6 +138,28 @@ export default function App() {
   const [isDailyHoroscopeOpen, setIsDailyHoroscopeOpen] = useState(false);
   const [isMuhurthamCalendarOpen, setIsMuhurthamCalendarOpen] = useState(false);
   const [selectedPorutham, setSelectedPorutham] = useState<PoruthamResult | null>(null);
+
+  // URL /admin route detection
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const p = window.location.pathname.toLowerCase();
+    const h = window.location.hash.toLowerCase();
+    return p === '/admin' || p.startsWith('/admin') || h === '#/admin' || h === '#admin';
+  });
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      setIsAdminRoute(p === '/admin' || p.startsWith('/admin') || h === '#/admin' || h === '#admin');
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -207,13 +230,16 @@ export default function App() {
       return;
     }
 
+    const gRasi = girlDetails.rasi || getRasiFromNakshatraPada(girlDetails.starId, girlDetails.pada || 1);
+    const bRasi = boyDetails.rasi || getRasiFromNakshatraPada(boyDetails.starId, boyDetails.pada || 1);
+
     const result = await astroWorker.calculatePorutham(
       girlDetails.starId, 
       boyDetails.starId,
       girlDetails.pada || 1,
       boyDetails.pada || 1,
-      girlDetails.rasi,
-      boyDetails.rasi
+      gRasi,
+      bRasi
     );
     setMatchResult(result);
     setView('basic');
@@ -222,7 +248,12 @@ export default function App() {
   const handleIndepthCheck = async () => {
     setIsLoadingIndepth(true);
     try {
-      const result = await astroWorker.calculateIndepth(boyDetails, girlDetails);
+      const gRasi = girlDetails.rasi || getRasiFromNakshatraPada(girlDetails.starId, girlDetails.pada || 1);
+      const bRasi = boyDetails.rasi || getRasiFromNakshatraPada(boyDetails.starId, boyDetails.pada || 1);
+      const result = await astroWorker.calculateIndepth(
+        { ...boyDetails, rasi: bRasi }, 
+        { ...girlDetails, rasi: gRasi }
+      );
       setIndepthResult(result);
       
       // Calculate Dasa and Muhurthams
@@ -312,6 +343,17 @@ export default function App() {
     { name: "ശനി", rasi: "Kumbha" },
     { name: "ചൊവ്വ", rasi: "Vrischika" }
   ];
+
+  if (isAdminRoute) {
+    return (
+      <AdminPage
+        onExit={() => {
+          window.history.pushState(null, '', '/');
+          setIsAdminRoute(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className={`min-h-[100dvh] bg-surface font-sans text-on-surface relative flex flex-col overflow-x-hidden`}>
@@ -1103,14 +1145,36 @@ export default function App() {
                         required
                       />
                     </div>
-                    <div className="space-y-1.5 group">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.star')}</label>
-                      <div className="relative">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2 space-y-1.5 group">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.star')}</label>
                         <CustomSelect
                           value={boyDetails.starId || ''}
-                          onChange={(val) => setBoyDetails({ ...boyDetails, starId: Number(val) })}
+                          onChange={(val) => {
+                            const newStar = Number(val);
+                            const newRasi = getRasiFromNakshatraPada(newStar, boyDetails.pada || 1);
+                            setBoyDetails({ ...boyDetails, starId: newStar, rasi: newRasi });
+                          }}
                           options={NAKSHATRAS.map(star => ({ value: star.id, label: `${lang === 'ml' ? star.malayalamName : star.name}` }))}
                           placeholder={t('form.star_placeholder')}
+                        />
+                      </div>
+                      <div className="space-y-1.5 group">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.pada')}</label>
+                        <CustomSelect
+                          value={boyDetails.pada || 1}
+                          onChange={(val) => {
+                            const newPada = Number(val);
+                            const newRasi = getRasiFromNakshatraPada(boyDetails.starId, newPada);
+                            setBoyDetails({ ...boyDetails, pada: newPada, rasi: newRasi });
+                          }}
+                          options={[
+                            { value: 1, label: lang === 'ml' ? 'പാദം 1' : 'Pada 1' },
+                            { value: 2, label: lang === 'ml' ? 'പാദം 2' : 'Pada 2' },
+                            { value: 3, label: lang === 'ml' ? 'പാദം 3' : 'Pada 3' },
+                            { value: 4, label: lang === 'ml' ? 'പാദം 4' : 'Pada 4' }
+                          ]}
+                          placeholder={t('form.pada_placeholder')}
                         />
                       </div>
                     </div>
@@ -1178,14 +1242,36 @@ export default function App() {
                         required
                       />
                     </div>
-                    <div className="space-y-1.5 group">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.star')}</label>
-                      <div className="relative">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2 space-y-1.5 group">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.star')}</label>
                         <CustomSelect
                           value={girlDetails.starId || ''}
-                          onChange={(val) => setGirlDetails({ ...girlDetails, starId: Number(val) })}
+                          onChange={(val) => {
+                            const newStar = Number(val);
+                            const newRasi = getRasiFromNakshatraPada(newStar, girlDetails.pada || 1);
+                            setGirlDetails({ ...girlDetails, starId: newStar, rasi: newRasi });
+                          }}
                           options={NAKSHATRAS.map(star => ({ value: star.id, label: `${lang === 'ml' ? star.malayalamName : star.name}` }))}
                           placeholder={t('form.star_placeholder')}
+                        />
+                      </div>
+                      <div className="space-y-1.5 group">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1 group-focus-within:text-primary transition-colors">{t('form.pada')}</label>
+                        <CustomSelect
+                          value={girlDetails.pada || 1}
+                          onChange={(val) => {
+                            const newPada = Number(val);
+                            const newRasi = getRasiFromNakshatraPada(girlDetails.starId, newPada);
+                            setGirlDetails({ ...girlDetails, pada: newPada, rasi: newRasi });
+                          }}
+                          options={[
+                            { value: 1, label: lang === 'ml' ? 'പാദം 1' : 'Pada 1' },
+                            { value: 2, label: lang === 'ml' ? 'പാദം 2' : 'Pada 2' },
+                            { value: 3, label: lang === 'ml' ? 'പാദം 3' : 'Pada 3' },
+                            { value: 4, label: lang === 'ml' ? 'പാദം 4' : 'Pada 4' }
+                          ]}
+                          placeholder={t('form.pada_placeholder')}
                         />
                       </div>
                     </div>
@@ -1824,27 +1910,33 @@ export default function App() {
 
                 {/* Kuja Dosham Analysis */}
                 <section className="grid grid-cols-2 gap-4">
+                  {/* Boy */}
                   <div className="bg-surface-container-low rounded-[28px] p-5 flex flex-col items-center justify-center text-center glass-card">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${indepthResult.chovvaDosham.hasDosham ? 'bg-error-container' : 'bg-surface-container-highest'}`}>
-                      <span className={`material-symbols-outlined ${indepthResult.chovvaDosham.hasDosham ? 'text-error' : 'text-on-surface-variant'}`} style={{ fontVariationSettings: indepthResult.chovvaDosham.hasDosham ? "'FILL' 1" : "" }}>
-                        {indepthResult.chovvaDosham.hasDosham ? 'flare' : 'bedtime'}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${indepthResult.chovvaDosham.boyHasDosham ? 'bg-error-container' : 'bg-surface-container-highest'}`}>
+                      <span className={`material-symbols-outlined ${indepthResult.chovvaDosham.boyHasDosham ? 'text-error' : 'text-on-surface-variant'}`} style={{ fontVariationSettings: indepthResult.chovvaDosham.boyHasDosham ? "'FILL' 1" : "" }}>
+                        {indepthResult.chovvaDosham.boyHasDosham ? 'flare' : 'bedtime'}
                       </span>
                     </div>
                     <h3 className="text-xs font-bold text-on-surface mb-1">{t('indepth.kuja_dosham')}</h3>
                     <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant mb-3 font-semibold">{boyDetails.name.split(' ')[0]}</p>
-                    <div className={`bg-white px-4 py-1.5 rounded-full text-[11px] font-bold shadow-sm ${indepthResult.chovvaDosham.hasDosham ? 'text-error' : 'text-[#1e5d3c]'}`}>
-                      {indepthResult.chovvaDosham.hasDosham ? t('indepth.present') : t('indepth.absent')}
+                    <div className={`bg-white px-4 py-1.5 rounded-full text-[11px] font-bold shadow-sm ${indepthResult.chovvaDosham.boyHasDosham ? 'text-error' : 'text-[#1e5d3c]'}`}>
+                      {indepthResult.chovvaDosham.boyStatus === 'ACTIVE_DOSHA' ? t('indepth.present') : 
+                       indepthResult.chovvaDosham.boyStatus === 'DOSHA_CANCELLED' ? (lang === 'ml' ? 'പരിഹൃത ദോഷം' : 'Cancelled') : t('indepth.absent')}
                     </div>
                   </div>
 
+                  {/* Girl */}
                   <div className="bg-surface-container-low rounded-[28px] p-5 flex flex-col items-center justify-center text-center glass-card">
-                    <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-3">
-                      <span className="material-symbols-outlined text-on-surface-variant">bedtime</span>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${indepthResult.chovvaDosham.girlHasDosham ? 'bg-error-container' : 'bg-surface-container-highest'}`}>
+                      <span className={`material-symbols-outlined ${indepthResult.chovvaDosham.girlHasDosham ? 'text-error' : 'text-on-surface-variant'}`} style={{ fontVariationSettings: indepthResult.chovvaDosham.girlHasDosham ? "'FILL' 1" : "" }}>
+                        {indepthResult.chovvaDosham.girlHasDosham ? 'flare' : 'bedtime'}
+                      </span>
                     </div>
-                    <h3 className="text-xs font-bold text-on-surface mb-1">Kuja Dosham</h3>
+                    <h3 className="text-xs font-bold text-on-surface mb-1">{t('indepth.kuja_dosham')}</h3>
                     <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant mb-3 font-semibold">{girlDetails.name.split(' ')[0]}</p>
-                    <div className="bg-white px-4 py-1.5 rounded-full text-[#1e5d3c] text-[11px] font-bold shadow-sm">
-                      Absent
+                    <div className={`bg-white px-4 py-1.5 rounded-full text-[11px] font-bold shadow-sm ${indepthResult.chovvaDosham.girlHasDosham ? 'text-error' : 'text-[#1e5d3c]'}`}>
+                      {indepthResult.chovvaDosham.girlStatus === 'ACTIVE_DOSHA' ? t('indepth.present') : 
+                       indepthResult.chovvaDosham.girlStatus === 'DOSHA_CANCELLED' ? (lang === 'ml' ? 'പരിഹൃത ദോഷം' : 'Cancelled') : t('indepth.absent')}
                     </div>
                   </div>
 
@@ -2603,6 +2695,17 @@ export default function App() {
                         <span className="text-sm text-left flex-1 min-w-0 leading-snug whitespace-normal">{item.label}</span>
                       </button>
                     ))}
+                    <button
+                      onClick={() => {
+                        window.history.pushState(null, '', '/admin');
+                        setIsAdminRoute(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all min-h-[44px] text-amber-700/90 hover:bg-amber-50 font-medium border border-dashed border-amber-300/50 mt-2"
+                    >
+                      <span className="material-symbols-outlined text-[20px] shrink-0 text-amber-600">admin_panel_settings</span>
+                      <span className="text-sm text-left flex-1 min-w-0 leading-snug whitespace-normal">Admin Panel (അഡ്മിൻ)</span>
+                    </button>
                   </nav>
                 </div>
               </div>
@@ -2683,7 +2786,8 @@ export default function App() {
               <div className="text-center w-1/3">
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Boy</p>
                 <h2 className="text-2xl font-bold text-slate-800">{boyDetails.name || 'N/A'}</h2>
-                <p className="text-primary font-medium mt-1">{getBoyStar()?.malayalamName} ({getBoyStar()?.name})</p>
+                <p className="text-primary font-medium mt-1">{getBoyStar()?.malayalamName} ({getBoyStar()?.name}) - {lang === 'ml' ? `പാദം ${boyDetails.pada || 1}` : `Pada ${boyDetails.pada || 1}`}</p>
+                <p className="text-xs text-slate-500 font-medium">{boyDetails.rasi || getRasiFromNakshatraPada(boyDetails.starId, boyDetails.pada || 1)} Rasi</p>
               </div>
               <div className="w-1/3 flex justify-center">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -2693,7 +2797,8 @@ export default function App() {
               <div className="text-center w-1/3">
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Girl</p>
                 <h2 className="text-2xl font-bold text-slate-800">{girlDetails.name || 'N/A'}</h2>
-                <p className="text-primary font-medium mt-1">{getGirlStar()?.malayalamName} ({getGirlStar()?.name})</p>
+                <p className="text-primary font-medium mt-1">{getGirlStar()?.malayalamName} ({getGirlStar()?.name}) - {lang === 'ml' ? `പാദം ${girlDetails.pada || 1}` : `Pada ${girlDetails.pada || 1}`}</p>
+                <p className="text-xs text-slate-500 font-medium">{girlDetails.rasi || getRasiFromNakshatraPada(girlDetails.starId, girlDetails.pada || 1)} Rasi</p>
               </div>
             </div>
 
@@ -2773,9 +2878,14 @@ export default function App() {
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
                   <h5 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">warning</span>
-                    Dosha Check
+                    Chovva Dosham (Kuja Dosham Check)
                   </h5>
                   <p className="text-base text-slate-600 leading-relaxed">{indepthResult.chovvaDosham.description}</p>
+                  <div className="mt-4 flex gap-6 text-sm font-medium bg-white p-4 rounded-xl inline-flex border border-slate-100">
+                    <span className="text-slate-500">Boy: <span className={`font-bold ml-1 ${indepthResult.chovvaDosham.boyHasDosham ? 'text-red-600' : 'text-green-700'}`}>{indepthResult.chovvaDosham.boyStatus === 'ACTIVE_DOSHA' ? 'Present' : indepthResult.chovvaDosham.boyStatus === 'DOSHA_CANCELLED' ? 'Cancelled' : 'Absent'}</span></span>
+                    <div className="w-px bg-slate-200"></div>
+                    <span className="text-slate-500">Girl: <span className={`font-bold ml-1 ${indepthResult.chovvaDosham.girlHasDosham ? 'text-red-600' : 'text-green-700'}`}>{indepthResult.chovvaDosham.girlStatus === 'ACTIVE_DOSHA' ? 'Present' : indepthResult.chovvaDosham.girlStatus === 'DOSHA_CANCELLED' ? 'Cancelled' : 'Absent'}</span></span>
+                  </div>
                 </div>
                 
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">

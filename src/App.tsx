@@ -37,6 +37,7 @@ import { YatraMuhurthamView } from './components/YatraMuhurthamView';
 import { SpiritualInitiationView } from './components/SpiritualInitiationView';
 import { LitigationStrategyView } from './components/LitigationStrategyView';
 import { AstrometeorologyView } from './components/AstrometeorologyView';
+import { AdminPage } from './components/AdminPage';
 import { CustomSelect } from './components/CustomSelect';
 import { CustomDatePicker } from './components/CustomDatePicker';
 import { CustomTimePicker } from './components/CustomTimePicker';
@@ -137,6 +138,28 @@ export default function App() {
   const [isDailyHoroscopeOpen, setIsDailyHoroscopeOpen] = useState(false);
   const [isMuhurthamCalendarOpen, setIsMuhurthamCalendarOpen] = useState(false);
   const [selectedPorutham, setSelectedPorutham] = useState<PoruthamResult | null>(null);
+
+  // URL /admin route detection
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const p = window.location.pathname.toLowerCase();
+    const h = window.location.hash.toLowerCase();
+    return p === '/admin' || p.startsWith('/admin') || h === '#/admin' || h === '#admin';
+  });
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      setIsAdminRoute(p === '/admin' || p.startsWith('/admin') || h === '#/admin' || h === '#admin');
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -320,6 +343,17 @@ export default function App() {
     { name: "ശനി", rasi: "Kumbha" },
     { name: "ചൊവ്വ", rasi: "Vrischika" }
   ];
+
+  if (isAdminRoute) {
+    return (
+      <AdminPage
+        onExit={() => {
+          window.history.pushState(null, '', '/');
+          setIsAdminRoute(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className={`min-h-[100dvh] bg-surface font-sans text-on-surface relative flex flex-col overflow-x-hidden`}>
@@ -2661,6 +2695,17 @@ export default function App() {
                         <span className="text-sm text-left flex-1 min-w-0 leading-snug whitespace-normal">{item.label}</span>
                       </button>
                     ))}
+                    <button
+                      onClick={() => {
+                        window.history.pushState(null, '', '/admin');
+                        setIsAdminRoute(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all min-h-[44px] text-amber-700/90 hover:bg-amber-50 font-medium border border-dashed border-amber-300/50 mt-2"
+                    >
+                      <span className="material-symbols-outlined text-[20px] shrink-0 text-amber-600">admin_panel_settings</span>
+                      <span className="text-sm text-left flex-1 min-w-0 leading-snug whitespace-normal">Admin Panel (അഡ്മിൻ)</span>
+                    </button>
                   </nav>
                 </div>
               </div>

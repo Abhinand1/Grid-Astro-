@@ -1,5 +1,5 @@
 import { evaluateMarriageMatch, KeralaMatchEvaluationReport } from './keralaMatchEngine';
-import { NAKSHATRAS } from './astroData';
+import { NAKSHATRAS, getRasiFromNakshatraPada } from './astroData';
 
 export interface IndepthReport {
   papasamyam: {
@@ -10,6 +10,11 @@ export interface IndepthReport {
   };
   chovvaDosham: {
     hasDosham: boolean;
+    boyHasDosham: boolean;
+    girlHasDosham: boolean;
+    boyStatus: 'NO_DOSHA' | 'ACTIVE_DOSHA' | 'DOSHA_CANCELLED';
+    girlStatus: 'NO_DOSHA' | 'ACTIVE_DOSHA' | 'DOSHA_CANCELLED';
+    status: 'COMPATIBLE' | 'NEUTRALIZED' | 'INCOMPATIBLE';
     description: string;
   };
   dasaSandhi: {
@@ -28,13 +33,16 @@ export async function calculateIndepth(boy: any, girl: any): Promise<IndepthRepo
   const boyStar = NAKSHATRAS.find(n => n.id === boy.starId) || NAKSHATRAS[0];
   const girlStar = NAKSHATRAS.find(n => n.id === girl.starId) || NAKSHATRAS[0];
 
+  const girlRasi = girl.rasi || getRasiFromNakshatraPada(girlStar.id, girl.pada || 1) || girlStar.defaultRashi;
+  const boyRasi = boy.rasi || getRasiFromNakshatraPada(boyStar.id, boy.pada || 1) || boyStar.defaultRashi;
+
   const report = evaluateMarriageMatch({
     girl: {
       name: girl.name || 'Bride',
       nakshatra: girlStar.name,
       nakshatra_index: girlStar.id,
       pada: girl.pada || 1,
-      chandra_rasi: girl.rasi || girlStar.defaultRashi,
+      chandra_rasi: girlRasi,
       dob: girl.dob,
       time: girl.time
     },
@@ -43,7 +51,7 @@ export async function calculateIndepth(boy: any, girl: any): Promise<IndepthRepo
       nakshatra: boyStar.name,
       nakshatra_index: boyStar.id,
       pada: boy.pada || 1,
-      chandra_rasi: boy.rasi || boyStar.defaultRashi,
+      chandra_rasi: boyRasi,
       dob: boy.dob,
       time: boy.time
     }
@@ -51,9 +59,11 @@ export async function calculateIndepth(boy: any, girl: any): Promise<IndepthRepo
 
   const boyScore = report.papasamya_result.boy_points;
   const girlScore = report.papasamya_result.girl_points;
-  const isPapasamyamCompatible = report.papasamya_result.status !== 'DEFICIT' || Math.abs(report.papasamya_result.difference) <= 1.0;
+  const isPapasamyamCompatible = report.papasamya_result.status !== 'DEFICIT' || Math.abs(report.papasamya_result.difference) <= 0.75;
 
-  const hasChovvaDosham = report.chovva_dosha_result.girl_status === 'ACTIVE_DOSHA' || report.chovva_dosha_result.boy_status === 'ACTIVE_DOSHA';
+  const boyHasDosham = report.chovva_dosha_result.boy_status === 'ACTIVE_DOSHA';
+  const girlHasDosham = report.chovva_dosha_result.girl_status === 'ACTIVE_DOSHA';
+  const hasChovvaDosham = boyHasDosham || girlHasDosham;
   const hasDasaSandhi = report.dasa_sandhi_result.status === 'NOT_RECOMMENDED_CRITICAL_COLLISION';
 
   // Madhamaranju Dosha:
@@ -69,6 +79,11 @@ export async function calculateIndepth(boy: any, girl: any): Promise<IndepthRepo
     },
     chovvaDosham: {
       hasDosham: hasChovvaDosham,
+      boyHasDosham,
+      girlHasDosham,
+      boyStatus: report.chovva_dosha_result.boy_status,
+      girlStatus: report.chovva_dosha_result.girl_status,
+      status: report.chovva_dosha_result.overall_check,
       description: report.chovva_dosha_result.description
     },
     dasaSandhi: {

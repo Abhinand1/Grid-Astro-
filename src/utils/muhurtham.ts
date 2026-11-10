@@ -30,10 +30,21 @@ export function findMuhurthams(girlStarId: number, boyStarId: number): Muhurtham
     const moonLon = getPlanetSiderealLongitude(Astronomy.Body.Moon, candidateDate);
     const sunLon = getPlanetSiderealLongitude(Astronomy.Body.Sun, candidateDate);
 
+    // Solar month check: In Kerala tradition, avoid Karkidakam (3) and Dhanu (8) for marriage
+    const sunRasi = Math.floor(sunLon / 30);
+    if (sunRasi === 3 || sunRasi === 8) {
+      continue;
+    }
+
     // Accurate Nakshatra
     const starIndex = Math.floor(moonLon / (360 / 27));
     const star = NAKSHATRAS[starIndex];
     if (!star || !PREFERRED_STARS.includes(star.name)) {
+      continue;
+    }
+
+    // In classical marriage election (Muhurtha Padhavi), marriage on Janma Nakshatra of bride or groom is strictly prohibited
+    if (star.id === girlStarId || star.id === boyStarId) {
       continue;
     }
 
@@ -57,9 +68,9 @@ export function findMuhurthams(girlStarId: number, boyStarId: number): Muhurtham
     const countBoy = ((star.id - boyStarId + 27) % 27) + 1;
     const boyTarabalam = (countBoy - 1) % 9;
 
-    // Vipat (2), Pratyak (4), Naidhana (6) are inauspicious
-    if (girlTarabalam === 2 || girlTarabalam === 4 || girlTarabalam === 6 ||
-        boyTarabalam === 2 || boyTarabalam === 4 || boyTarabalam === 6) {
+    // Janma (0), Vipat (2), Pratyak (4), Naidhana (6) are inauspicious for marriage
+    if (girlTarabalam === 0 || girlTarabalam === 2 || girlTarabalam === 4 || girlTarabalam === 6 ||
+        boyTarabalam === 0 || boyTarabalam === 2 || boyTarabalam === 4 || boyTarabalam === 6) {
       continue;
     }
 

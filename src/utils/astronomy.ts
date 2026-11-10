@@ -73,6 +73,25 @@ export function getKeralaObserver(lat = 10.0, lon = 76.3, elevation = 10): Astro
   return new Astronomy.Observer(lat, lon, elevation);
 }
 
+// Precise Sidereal Ascendant (Lagna) calculation using Local Sidereal Time and Lahiri Ayanamsa
+export function calculateSiderealAscendant(date: Date = new Date(), lat = 10.0, lon = 76.3): number {
+  const time = Astronomy.MakeTime(date);
+  const gast = Astronomy.SiderealTime(time); // Greenwich Apparent Sidereal Time in hours
+  const lstDeg = (gast * 15 + lon + 360) % 360; // Local Sidereal Time in degrees (RAMC)
+  const lstRad = (lstDeg * Math.PI) / 180;
+  const latRad = (lat * Math.PI) / 180;
+  const T = time.ut / 36525;
+  const eps = (23.4392911 - (46.8150 * T) / 3600) * (Math.PI / 180); // True obliquity of ecliptic
+
+  const y = Math.cos(lstRad);
+  const x = -Math.sin(lstRad) * Math.cos(eps) - Math.tan(latRad) * Math.sin(eps);
+  let tropicalAsc = Math.atan2(y, x) * (180 / Math.PI);
+  if (tropicalAsc < 0) tropicalAsc += 360;
+
+  const ayanamsa = getAyanamsa(date);
+  return (tropicalAsc - ayanamsa + 360) % 360;
+}
+
 // Astronomical Sunrise and Sunset in Kerala for a given date
 export function getKeralaSunTimes(targetDate: Date = new Date(), lat = 10.0, lon = 76.3) {
   const observer = getKeralaObserver(lat, lon);

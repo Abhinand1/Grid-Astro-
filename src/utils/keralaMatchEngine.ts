@@ -1,6 +1,6 @@
-import { NAKSHATRAS, RASIS, PLANETARY_FRIENDSHIP, YONI_ENEMIES, YONI_FRIENDS, VASYA_MAPPING, Nakshatra } from './astroData';
+import { NAKSHATRAS, RASIS, PLANETARY_FRIENDSHIP, YONI_ENEMIES, YONI_FRIENDS, VASYA_MAPPING, Nakshatra, getRasiFromNakshatraPada } from './astroData';
 import * as Astronomy from 'astronomy-engine';
-import { getPlanetSiderealLongitude, getAyanamsa } from './astronomy';
+import { getPlanetSiderealLongitude, getAyanamsa, calculateSiderealAscendant } from './astronomy';
 
 // ----------------------------------------------------------------------
 // DATA TYPES & SCHEMAS (Conforms to Specification JSON Schema)
@@ -150,8 +150,8 @@ export function evaluateDasaPorutham(girlStar: Nakshatra, boyStar: Nakshatra, gi
   vetoRajju: boolean;
   vetoVedha: boolean;
 } {
-  const gRasi = girlRasiName || girlStar.defaultRashi;
-  const bRasi = boyRasiName || boyStar.defaultRashi;
+  const gRasi = girlRasiName || getRasiFromNakshatraPada(girlStar.id, girlPada) || girlStar.defaultRashi;
+  const bRasi = boyRasiName || getRasiFromNakshatraPada(boyStar.id, boyPada) || boyStar.defaultRashi;
   const gRasiId = getRasiId(gRasi);
   const bRasiId = getRasiId(bRasi);
 
@@ -232,6 +232,16 @@ export function evaluateDasaPorutham(girlStar: Nakshatra, boyStar: Nakshatra, gi
     } else {
       ganaDesc += `Temperamental friction between Rakshasa and Manushya.`;
     }
+  } else if (boyStar.gana === 'Rakshasa' && girlStar.gana === 'Deva') {
+    // Secondary tolerance if distance is high
+    if (dinaCount > 14) {
+      ganaScore = 0.5;
+      ganaStatus = 'Satisfactory';
+      ganaTraditional = 'Madhyamam';
+      ganaDesc += `Rakshasa groom with Deva bride mitigated by distance (> 14).`;
+    } else {
+      ganaDesc += `Temperamental friction between Rakshasa and Deva.`;
+    }
   } else if (girlStar.gana === 'Rakshasa') {
     ganaScore = 0.0;
     ganaStatus = 'Not Satisfactory';
@@ -253,8 +263,8 @@ export function evaluateDasaPorutham(girlStar: Nakshatra, boyStar: Nakshatra, gi
   });
 
   // 3. Mahendra Porutham
-  // Progeny and wealth booster: counts 4, 7, 10, 16, 19, 22, 25
-  const mahendraCounts = [4, 7, 10, 16, 19, 22, 25];
+  // Progeny and wealth booster: counts 4, 7, 10, 13, 16, 19, 22, 25
+  const mahendraCounts = [4, 7, 10, 13, 16, 19, 22, 25];
   const isMahendra = mahendraCounts.includes(dinaCount);
   items.push({
     id: 'mahendra',
@@ -367,17 +377,15 @@ export function evaluateDasaPorutham(girlStar: Nakshatra, boyStar: Nakshatra, gi
 
   // 7. Rajju Porutham - FATAL GATEKEEPER
   // Longevity & Mangalya strength. Same Rajju is a fatal flaw in Kerala Jyothisham
-  const isSamePanchaRajju = girlStar.rajju === boyStar.rajju;
-  const isSameTriRajju = girlStar.triRajju === boyStar.triRajju;
-  const hasRajjuDosha = isSamePanchaRajju || isSameTriRajju;
+  const hasRajjuDosha = girlStar.rajju === boyStar.rajju;
 
   const rajjuScore = hasRajjuDosha ? 0.0 : 1.0;
   const rajjuStatus: PoruthamStatus = hasRajjuDosha ? 'Not Satisfactory' : 'Good';
   const rajjuTraditional = hasRajjuDosha ? 'Adhamam' : 'Uthamam';
 
-  let rajjuDesc = `Girl: ${girlStar.rajju} (${girlStar.triRajju}), Boy: ${boyStar.rajju} (${boyStar.triRajju}). `;
+  let rajjuDesc = `Girl: ${girlStar.rajju} Rajju, Boy: ${boyStar.rajju} Rajju. `;
   if (hasRajjuDosha) {
-    rajjuDesc += 'FATAL VETO: Rajju Dosha present. ';
+    rajjuDesc += `FATAL VETO: Rajju Dosha present (Same ${girlStar.rajju} Rajju). `;
     if (girlStar.rajju === 'Siro') rajjuDesc += 'Shiro Rajju threatens the longevity of the husband.';
     else if (girlStar.rajju === 'Kanta') rajjuDesc += 'Kantha Rajju threatens the longevity of the wife.';
     else if (girlStar.rajju === 'Udara') rajjuDesc += 'Udara/Nabhi Rajju threatens progeny and fertility.';
@@ -592,15 +600,11 @@ function calculatePersonPapaPoints(date: Date, lagnaRasiIndex?: number): { total
   const rahuRasi = Math.floor(rahuLon / 30);
   const jupiterRasi = Math.floor(jupiterLon / 30);
 
-  // Approximate Lagna if not provided:
-  // In Kerala (~10°N), sunrise is ~6:00 AM. Sun travels 2 hours per rasi.
+  // Calculate precise astronomical Sidereal Lagna (Ascendant) if not explicitly provided
   let lagnaRasi = lagnaRasiIndex !== undefined ? lagnaRasiIndex : 0;
   if (lagnaRasiIndex === undefined) {
-    const sunLon = getPlanetSiderealLongitude(Astronomy.Body.Sun, date);
-    const sunRasi = Math.floor(sunLon / 30);
-    const hours = date.getUTCHours() + 5.5; // IST
-    const offsetHouses = Math.floor(((hours - 6 + 24) % 24) / 2);
-    lagnaRasi = (sunRasi + offsetHouses) % 12;
+    const ascLon = calculateSiderealAscendant(date);
+    lagnaRasi = Math.floor(ascLon / 30);
   }
 
   const doshaHouses = [1, 2, 4, 7, 8, 12];
@@ -612,17 +616,30 @@ function calculatePersonPapaPoints(date: Date, lagnaRasiIndex?: number): { total
     return ((planetRasi - refRasi) % 12 + 12) % 12 + 1;
   };
 
+  // Classical Kerala Papasamyam planet weighting:
+  // Mars and Saturn are full malefics (1.0). Sun, Rahu, and Ketu carry half weight (0.5).
+  const planetWeights: Record<string, number> = {
+    [Astronomy.Body.Mars]: 1.0,
+    [Astronomy.Body.Saturn]: 1.0,
+    [Astronomy.Body.Sun]: 0.5,
+    'Rahu': 0.5,
+    'Ketu': 0.5
+  };
+
   for (const body of papaBodies) {
     const pLon = getPlanetSiderealLongitude(body, date);
     const pRasi = Math.floor(pLon / 30);
+    const pWeight = planetWeights[body] ?? 1.0;
 
     const hLagna = getHouse(pRasi, lagnaRasi);
     const hMoon = getHouse(pRasi, moonRasi);
     const hVenus = getHouse(pRasi, venusRasi);
 
-    if (doshaHouses.includes(hLagna)) lagnaPoints += 1.0;
-    if (doshaHouses.includes(hMoon)) moonPoints += 1.0;
-    if (doshaHouses.includes(hVenus)) venusPoints += 1.0;
+    // Classical Kerala reference weighting:
+    // Afflictions from Lagna have full strength (1.0), Moon half strength (0.5), Venus quarter strength (0.25).
+    if (doshaHouses.includes(hLagna)) lagnaPoints += 1.0 * pWeight;
+    if (doshaHouses.includes(hMoon)) moonPoints += 0.5 * pWeight;
+    if (doshaHouses.includes(hVenus)) venusPoints += 0.25 * pWeight;
   }
 
   const marsHouseLagna = getHouse(marsRasi, lagnaRasi);
@@ -634,13 +651,13 @@ function calculatePersonPapaPoints(date: Date, lagnaRasiIndex?: number): { total
   const hasJupiterAspect = [1, 5, 7, 9].includes(jupFromMars);
   const isConjunctRahu = marsRasi === rahuRasi;
 
-  const total = Number((lagnaPoints + moonPoints + venusPoints).toFixed(1));
+  const total = Number((lagnaPoints + moonPoints + venusPoints).toFixed(2));
 
   return {
     total,
-    lagna: lagnaPoints,
-    moon: moonPoints,
-    venus: venusPoints,
+    lagna: Number(lagnaPoints.toFixed(2)),
+    moon: Number(moonPoints.toFixed(2)),
+    venus: Number(venusPoints.toFixed(2)),
     marsInfo: {
       houseFromLagna: marsHouseLagna,
       houseFromMoon: marsHouseMoon,
@@ -659,7 +676,7 @@ export function evaluatePapasamya(girlDate: Date, boyDate: Date, girlLagna?: str
   const gPapa = calculatePersonPapaPoints(girlDate, gLagnaIdx);
   const bPapa = calculatePersonPapaPoints(boyDate, bLagnaIdx);
 
-  const diff = Number((bPapa.total - gPapa.total).toFixed(1));
+  const diff = Number((bPapa.total - gPapa.total).toFixed(2));
   let status: 'UTTHAMAM' | 'MADHYAMAM' | 'DEFICIT' = 'DEFICIT';
   let description = '';
 
@@ -767,8 +784,8 @@ export function evaluateChovvaDosham(girlDate: Date, boyDate: Date, girlLagna?: 
     overallCheck = 'COMPATIBLE';
     description = 'Neither partner has active Chovva Dosham. Auspicious marriage compatibility.';
   } else if (bHasActive && !gHasActive) {
-    overallCheck = 'COMPATIBLE';
-    description = "Groom has Chovva Dosham while bride is free. In Kerala tradition, groom's higher threshold can absorb the affliction; acceptable with minor remedies.";
+    overallCheck = 'INCOMPATIBLE';
+    description = "Groom has active Chovva Dosham while bride is free. Mars affliction in the groom's chart is un-neutralized; requires Papasamyam balance and remedial prayers.";
   } else {
     // Bride has active dosham, boy does not
     overallCheck = 'INCOMPATIBLE';
@@ -831,12 +848,33 @@ export function evaluateDasaSandhi(girlBirthDate: Date, boyBirthDate: Date, girl
   const gTransitions = getMahadasaTransitions(girlBirthDate, girlStarId);
   const bTransitions = getMahadasaTransitions(boyBirthDate, boyStarId);
 
+  const now = new Date();
+  const girlAgeNow = (now.getTime() - girlBirthDate.getTime()) / (365.25 * 24 * 3600 * 1000);
+  const boyAgeNow = (now.getTime() - boyBirthDate.getTime()) / (365.25 * 24 * 3600 * 1000);
+
+  let windowStart: Date;
+  let windowEnd: Date;
+
+  if (girlAgeNow >= 16 && girlAgeNow <= 60 && boyAgeNow >= 16 && boyAgeNow <= 60) {
+    // Current prospective marriage window: from 1 year ago to 6 years ahead
+    windowStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    windowEnd = new Date(now.getTime() + 6 * 365.25 * 24 * 60 * 60 * 1000);
+  } else {
+    // Canonical marriageable age window: 20 to 38 years of age
+    const refBirth = Math.max(girlBirthDate.getTime(), boyBirthDate.getTime());
+    windowStart = new Date(refBirth + 20 * 365.25 * 24 * 3600 * 1000);
+    windowEnd = new Date(refBirth + 38 * 365.25 * 24 * 3600 * 1000);
+  }
+
+  const activeG = gTransitions.filter(t => t.endDate >= windowStart && t.endDate <= windowEnd);
+  const activeB = bTransitions.filter(t => t.endDate >= windowStart && t.endDate <= windowEnd);
+
   let minGapDays = Infinity;
   let closestGirlDate = '';
   let closestBoyDate = '';
 
-  for (const g of gTransitions) {
-    for (const b of bTransitions) {
+  for (const g of activeG) {
+    for (const b of activeB) {
       const gapDays = Math.abs(Math.floor((g.endDate.getTime() - b.endDate.getTime()) / (1000 * 60 * 60 * 24)));
       if (gapDays < minGapDays) {
         minGapDays = gapDays;
@@ -851,21 +889,24 @@ export function evaluateDasaSandhi(girlBirthDate: Date, boyBirthDate: Date, girl
 
   if (minGapDays < 180) {
     status = 'NOT_RECOMMENDED_CRITICAL_COLLISION';
-    description = `CRITICAL COLLISION: Gap between Mahadasa transitions is only ${minGapDays} days (< 6 months). Both partners experiencing Dasa Sandhi simultaneously causes severe marital instability.`;
+    description = `CRITICAL COLLISION: Gap between Mahadasa transitions in marriage window is only ${minGapDays} days (< 6 months). Both partners experiencing Dasa Sandhi simultaneously causes severe marital instability.`;
   } else if (minGapDays < 365) {
     status = 'SATISFACTORY_ACCEPTABLE';
-    description = `Acceptable gap (${minGapDays} days, between 6 and 12 months) between major Dasa transitions.`;
+    description = `Acceptable gap (${minGapDays} days, between 6 and 12 months) between major Dasa transitions in the prospective marriage period.`;
+  } else if (minGapDays !== Infinity) {
+    status = 'EXCELLENT_NO_COLLISION';
+    description = `Excellent separation (${minGapDays} days, > 1 year). No Dasa Sandhi collision detected in the active marriage period.`;
   } else {
     status = 'EXCELLENT_NO_COLLISION';
-    description = `Excellent separation (${minGapDays} days, > 1 year). No Dasa Sandhi collision detected.`;
+    description = 'No Mahadasa transition overlaps detected during the active marriage period. Stable planetary periods assure domestic peace.';
   }
 
   return {
     status,
-    min_gap_days: minGapDays,
+    min_gap_days: minGapDays === Infinity ? 9999 : minGapDays,
     description,
-    closestGirlTransition: closestGirlDate,
-    closestBoyTransition: closestBoyDate
+    closestGirlTransition: closestGirlDate || 'None in active window',
+    closestBoyTransition: closestBoyDate || 'None in active window'
   };
 }
 
@@ -950,13 +991,17 @@ export function evaluateMarriageMatch(profile: MatchmakingInputProfile): KeralaM
   }
 
   // 5. Papasamya Deficit Warning
-  if (papasamya.status === 'DEFICIT' && Math.abs(papasamya.difference) > 2.0) {
+  if (papasamya.status === 'DEFICIT' && Math.abs(papasamya.difference) > 1.5) {
     vetoReasons.push(`Severe Papasamya deficit: Girl has ${Math.abs(papasamya.difference)} more Papa points than Boy.`);
   }
 
   // 6. Chovva Dosha Mismatch
   if (chovvaDosha.overall_check === 'INCOMPATIBLE') {
-    vetoReasons.push('Chovva Dosha mismatch: Bride has un-cancelled Mars affliction without balance in groom’s chart.');
+    if (chovvaDosha.girl_status === 'ACTIVE_DOSHA' && chovvaDosha.boy_status !== 'ACTIVE_DOSHA') {
+      vetoReasons.push('Chovva Dosha mismatch: Bride has un-cancelled Mars affliction without balance in groom’s chart.');
+    } else if (chovvaDosha.boy_status === 'ACTIVE_DOSHA' && chovvaDosha.girl_status !== 'ACTIVE_DOSHA') {
+      vetoReasons.push('Chovva Dosha mismatch: Groom has un-cancelled Mars affliction without matching dosham in bride’s chart.');
+    }
   }
 
   let summary = '';

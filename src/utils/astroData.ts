@@ -65,10 +65,18 @@ export const RASIS = [
   { id: 12, name: "Meenam", malayalamName: "മീനം", lord: "Vyazham", lordMalayalam: "വ്യാഴം" },
 ];
 
+// Universal mapping of 108 Nakshatra Padas (quarters) to the 12 Rasis (9 padas per Rasi)
+export function getRasiFromNakshatraPada(starId: number, pada: number = 1): string {
+  const safePada = Math.min(4, Math.max(1, pada));
+  const totalPadaIndex = (starId - 1) * 4 + (safePada - 1);
+  const rasiIndex = Math.floor(totalPadaIndex / 9);
+  return RASIS[rasiIndex]?.name || NAKSHATRAS[starId - 1]?.defaultRashi || "Medam";
+}
+
 export const PLANETARY_FRIENDSHIP: Record<string, { friends: string[], neutral: string[], enemies: string[] }> = {
   "Suryan": { friends: ["Chandran", "Chovva", "Vyazham"], neutral: ["Budhan"], enemies: ["Shukran", "Shani"] },
   "Chandran": { friends: ["Suryan", "Budhan"], neutral: ["Chovva", "Vyazham", "Shukran", "Shani"], enemies: [] },
-  "Chovva": { friends: ["Suryan", "Chandran", "Vyazham"], neutral: ["Shani", "Budhan"], enemies: ["Shukran"] },
+  "Chovva": { friends: ["Suryan", "Chandran", "Vyazham"], neutral: ["Shukran", "Shani"], enemies: ["Budhan"] },
   "Budhan": { friends: ["Suryan", "Shukran"], neutral: ["Chovva", "Shani", "Vyazham"], enemies: ["Chandran"] },
   "Vyazham": { friends: ["Suryan", "Chandran", "Chovva"], neutral: ["Shani"], enemies: ["Budhan", "Shukran"] },
   "Shukran": { friends: ["Budhan", "Shani"], neutral: ["Chovva", "Vyazham"], enemies: ["Suryan", "Chandran"] },

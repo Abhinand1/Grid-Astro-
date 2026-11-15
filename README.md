@@ -44,16 +44,11 @@
 - **Litigation & Dispute Strategy (വ്യവഹാര ജ്യോതിഷം):** Planetary strength analysis for legal and dispute resolution timing.
 - **Astrometeorology & Relocation (കാലാവസ്ഥാ ജ്യോതിഷം):** Seasonal rainfall/weather trends and directional relocation insights.
 
-### 4. Protected Admin Portal (`/admin`)
-- **Session-Protected Console:** Accessible via `/admin` (or from the navigation drawer) with credential login and session persistence.
-- **Force Match & Birth-Time Adjuster (`forceMatchEngine.ts`):** Keeps the bride's horoscope fixed while scanning candidate birth-time windows for the groom on the same birth date to satisfy Rajju, Vedha, Chovva Dosham, Papasamyam, and Dashakoota score criteria—or explains clearly when a match is astronomically impossible on that date.
-- **Unbranded Jathakam PDF Export:** Generates a simple, clean, unbranded A4 Jathakam & Porutham PDF document for the adjusted chart.
-
-### 5. Mobile-First UX, Bilingual & PWA Ready
+### 4. Mobile-First UX, Bilingual & PWA Ready
 - **Full Bilingual Switching:** Instant toggle between English and Malayalam (`LanguageContext`) across navigation, forms, charts, and interpretations.
 - **Mobile-Optimized Controls:** Custom touch-friendly pickers (`CustomSelect`, `CustomDatePicker`, `CustomTimePicker`), responsive card layouts without clipping, haptic feedback (`haptics.ts`), and forced-dark-mode protection (`color-scheme: light only`, `forced-color-adjust: none`).
 - **Web Worker Offloading:** Heavy Porutham, Dasa, and Muhurtham computations run off the main thread via Comlink (`astro.worker.ts`) for smooth UI animations.
-- **PWA & Netlify Deployment Ready:** Configured with `vite-plugin-pwa` for installability/offline caching and `public/_redirects` for SPA routing (`/admin` and deep routes).
+- **PWA & Static Hosting Ready:** Configured with `vite-plugin-pwa` for installability/offline caching and `public/_redirects` for SPA routing.
 
 ---
 
@@ -74,10 +69,9 @@
 
 ```text
 ├── public/
-│   └── _redirects                  # Netlify SPA fallback routing
+│   └── _redirects                  # SPA fallback routing
 ├── src/
 │   ├── components/
-│   │   ├── AdminPage.tsx           # Protected /admin Force Match & PDF console
 │   │   ├── CustomDatePicker.tsx    # Mobile-friendly portal date picker
 │   │   ├── CustomSelect.tsx        # Responsive native/desktop dropdown
 │   │   ├── CustomTimePicker.tsx    # Touch-friendly HH:MM selector
@@ -93,7 +87,6 @@
 │   ├── utils/
 │   │   ├── astroData.ts            # 27 Nakshatras, 12 Rasis, Pada-to-Rasi mapping
 │   │   ├── astronomy.ts            # Sidereal longitudes, Lagna, Kerala Panchangam
-│   │   ├── forceMatchEngine.ts     # Groom birth-time window optimizer
 │   │   ├── keralaMatchEngine.ts    # Dashakoota, Papasamyam, Chovva Dosham, Dasa Sandhi
 │   │   ├── keralaAstrologySuite.ts # Specialized Kerala Jyothisham calculators
 │   │   └── ...                     # Module-specific calculation engines

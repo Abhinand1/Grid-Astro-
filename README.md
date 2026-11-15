@@ -1,72 +1,126 @@
-# Cosmic Harmony: Advanced Kerala Vedic Astrology & Matchmaking
+# Grid Astro — Kerala Vedic Astrology, Panchangam & Matchmaking
 
-Cosmic Harmony is a sophisticated, full-featured Vedic astrology application built with modern web technologies. It provides precise astronomical calculations and traditional Kerala-style astrological insights, ranging from personalized daily horoscopes to complex relationship compatibility analysis.
-
-## 🌟 Key Features
-
-### 1. Personalized Daily Horoscope
-- **Nakshatra-Based Predictions:** Get daily insights tailored to your birth star (Nakshatra).
-- **Comprehensive Metrics:** View your daily status, lucky color, lucky number, and specific remedies (പരിഹാരം) in both English and Malayalam.
-- **Real-Time Transit Chart:** Visualize the current planetary positions (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, and Ketu) in a traditional Rashi Chart.
-
-### 2. Vedic Matchmaking (Porutham)
-- **10-Point Matching System:** Detailed analysis of the traditional 10 poruthams (Dina, Gana, Mahendra, Sthree Deergha, Yoni, Rasi, Rasiyadhipathi, Vasya, Rajju, and Vedha).
-- **Compatibility Scoring:** Clear, visual representation of overall compatibility with detailed explanations for each factor.
-- **Cultural Nuance:** Built specifically to align with Kerala's unique astrological traditions.
-
-### 3. In-depth Cosmic Analysis
-- **Planetary Alignment:** Detailed verification of planetary positions at the time of birth for both partners.
-- **Papasamyam Balance:** Advanced calculation of dosha scores to ensure lifelong harmony and balance.
-- **Dasa Sandhi Verification:** Critical check for overlapping major planetary periods that could impact the longevity of a relationship.
-
-### 4. Muhurtham & Vimshottari Dasa
-- **Auspicious Timing:** Calculate the best dates and times for significant life events based on star compatibility.
-- **Dynamic Dasa Flow:** A beautiful, real-time visualization of the Vimshottari Dasa timeline, showing current Mahadasas and upcoming major cycles.
-
-### 5. Professional PDF Reports
-- **Exportable Insights:** Generate high-quality, professional PDF reports of the in-depth analysis and recommendations.
-- **Modern Rendering:** Utilizes advanced image processing to ensure charts and gradients are perfectly preserved in the final document.
-
-## 🛠️ Technical Stack
-
-- **Frontend:** React 18, TypeScript
-- **Styling:** Tailwind CSS v4 (Modern OKLCH color support)
-- **Animations:** Motion (Framer Motion)
-- **Astronomy Engine:** High-precision `astronomy-engine` for sidereal calculations.
-- **Reporting:** `html-to-image` and `jsPDF` for reliable document generation.
-- **Icons:** Lucide React & Material Symbols
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
-
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/cosmic-harmony.git
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-## 📐 Architecture & Logic
-
-The application relies on a custom-built astrological engine that bridges modern astronomical data with traditional Vedic rules:
-- **Sidereal Longitude:** Calculations are performed using the Ayanamsa to ensure accuracy in the Vedic system.
-- **Dynamic Charting:** The Rasi Chart component dynamically maps planetary longitudes to the 12 signs of the zodiac in the South Indian format.
-- **Vimshottari Logic:** Dasa periods are calculated based on the precise degree of the Moon at birth, providing a highly accurate life timeline.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Grid Astro** is a bilingual (**English & Malayalam / മലയാളം**) Vedic astrology and Kerala Jyothisham Progressive Web App (PWA) built with React, TypeScript, Tailwind CSS v4, and high-precision astronomical ephemeris calculations (`astronomy-engine`). Every calculation follows traditional Kerala Panchangam and Jyothisham rules with Lahiri (Chitra Paksha) Ayanamsa.
 
 ---
 
-*Developed with precision and care for the modern seeker of cosmic wisdom.*
+## Core Features
+
+### 1. Authentic Kerala Panchangam & Daily Star (ദിവസ നാൾ)
+- **Udaya Nakshatra (Sunrise Star):** Determines the official Malayalam calendar Day Star based on the Moon's sidereal longitude at local Kerala sunrise (`getKeralaDayPanchang`), matching traditional Malayalam calendars.
+- **Live Transit & Transition Timings:** Displays exact star transition times in IST, elapsed Nazhika duration from sunrise, upcoming Nakshatra, sunrise/sunset times, **Tithi** (Paksha & lunar day), and **Kollavarsham** (Malayalam Era date & month).
+- **Daily Panchangam Modal:** Interactive breakdown of the day's sunrise star vs. instantaneous lunar transit with traditional explanation notes.
+- **Personalized Daily Horoscope:** Nakshatra-based daily predictions, transit house impact, lucky color, lucky number, specific remedies (പരിഹാരം), and a real-time South Indian Rasi chart of current planetary positions.
+
+### 2. Marriage Matchmaking (വിവാഹ പൊരുത്തം)
+- **Dashakoota (10 Porutham) Analysis:** Evaluates Dina, Gana, Mahendra, Sthree Deergha, Yoni, Vedha, Rajju, Rasi, Rasyadhipathi, and Vasya with Pada-level Rasi derivation (`getRasiFromNakshatraPada`).
+- **Fatal Gatekeeper Veto Checks:** Strict verification of Rajju Dosham (Siro, Kanta, Udara, Uru, Pada) and Vedha afflictions, plus interactive detail modals explaining each Porutham rule.
+- **In-Depth Cosmic Verification:**
+  - **Papasamyam Balance:** Multi-point malefic weighting across Lagna, Moon, and Venus charts (`Mars`, `Saturn`, `Sun`, `Rahu`, `Ketu`) with precise Sidereal Ascendant calculation.
+  - **Chovva Dosham (Kuja Dosham):** Individual bride and groom status checks (`NO_DOSHA`, `ACTIVE_DOSHA`, `DOSHA_CANCELLED`) with classical cancellation exceptions.
+  - **Dasa Sandhi Collision Check:** Scans Mahadasa transitions within the prospective marriage window to detect overlapping Dasa Sandhi periods.
+  - **Vimshottari Dasa Timeline:** Dynamic planetary period and transition timeline for both partners.
+  - **Auspicious Marriage Muhurtham Finder:** Scans upcoming dates for compatible Tarabalam, favorable Tithis, and Kerala solar month rules (avoiding Karkidakam & Dhanu).
+- **South Indian Rasi Chart (രാശി ചക്രം):** Visual 12-house South Indian chart mapping planetary longitudes and birth Lagna.
+- **Exportable PDF Reports:** Generates clean, multi-page A4 PDF compatibility and horoscope reports using `html-to-image` and `jsPDF`.
+
+### 3. Complete Kerala Jyothisham Suite (17 Specialized Modules)
+- **General Horoscope (പൊതു ജാതകം):** Comprehensive birth-star and Pada analysis covering personality, career, finance, marriage, health, and remedies.
+- **Janam Kundli (ജനന ജാതകം):** Natal chart and planetary overview.
+- **Prashna Vicharam / Kundali (പ്രശ്ന വിചാരം):** Instant horary query engine using real-time astronomical Ascendant and planetary alignments.
+- **Transit Forecast & Ezharashani (ഗോചാര ഫലം):** Saturn (Sade Sati / Ezharashani / Ashtama Shani) and Jupiter transit impact analysis.
+- **Career & Vocational Direction (തൊഴിൽ & കർമ്മഫലം):** 10th-house karmic inclinations, leadership, and vocational guidance.
+- **Medical Astrology & Surgery (ആയുർ ജ്യോതിഷം):** Tridosha constitution balance and auspicious timing guidance for treatments and surgeries.
+- **Financial & Wealth Forecasting (ധന ഭാവ ഫലം):** Dhana Yoga, Lakshmi Yoga, and wealth-accumulation indicators.
+- **Remedial Prescriptions & Vazhipadu (പരിഹാര വിധികൾ):** Personalized Nakshatra-based gemstone recommendations (Ratnam) and Kerala temple offerings (Vazhipadu).
+- **Housewarming Muhurtham (ഗൃഹപ്രവേശം):** Auspicious Grihapravesham dates and timings.
+- **Bhoomi Puja (ഭൂമിപൂജ):** Foundation-laying Muhurtham finder.
+- **Business Launch / Vyapar Muhurtham (വ്യാപാര മുഹൂർത്തം):** Favorable dates and stars for starting commercial ventures.
+- **Vehicle Muhurtham (വാഹന മുഹൂർത്തം):** Auspicious dates and color guidance for vehicle purchases.
+- **Travel Muhurtham (യാത്രാ മുഹൂർത്തം):** Vaara Shoola, Chandrabalam, and travel safety timing.
+- **Baby Naming (നാമകരണം):** Nakshatra Pada-specific sacred seed syllables (നാമാക്ഷരങ്ങൾ) and name suggestions.
+- **Early Life Samskaras (ബാല്യകാല സംസ്കാരങ്ങൾ):** Auspicious timing for Annaprasanam (Choroonu), Vidyarambham, and early rites.
+- **Spiritual Initiation & Diksha (ഇഷ്ടദേവത):** Ishta Devatha identification and mantra/sadhana guidance.
+- **Litigation & Dispute Strategy (വ്യവഹാര ജ്യോതിഷം):** Planetary strength analysis for legal and dispute resolution timing.
+- **Astrometeorology & Relocation (കാലാവസ്ഥാ ജ്യോതിഷം):** Seasonal rainfall/weather trends and directional relocation insights.
+
+### 4. Protected Admin Portal (`/admin`)
+- **Session-Protected Console:** Accessible via `/admin` (or from the navigation drawer) with credential login and session persistence.
+- **Force Match & Birth-Time Adjuster (`forceMatchEngine.ts`):** Keeps the bride's horoscope fixed while scanning candidate birth-time windows for the groom on the same birth date to satisfy Rajju, Vedha, Chovva Dosham, Papasamyam, and Dashakoota score criteria—or explains clearly when a match is astronomically impossible on that date.
+- **Unbranded Jathakam PDF Export:** Generates a simple, clean, unbranded A4 Jathakam & Porutham PDF document for the adjusted chart.
+
+### 5. Mobile-First UX, Bilingual & PWA Ready
+- **Full Bilingual Switching:** Instant toggle between English and Malayalam (`LanguageContext`) across navigation, forms, charts, and interpretations.
+- **Mobile-Optimized Controls:** Custom touch-friendly pickers (`CustomSelect`, `CustomDatePicker`, `CustomTimePicker`), responsive card layouts without clipping, haptic feedback (`haptics.ts`), and forced-dark-mode protection (`color-scheme: light only`, `forced-color-adjust: none`).
+- **Web Worker Offloading:** Heavy Porutham, Dasa, and Muhurtham computations run off the main thread via Comlink (`astro.worker.ts`) for smooth UI animations.
+- **PWA & Netlify Deployment Ready:** Configured with `vite-plugin-pwa` for installability/offline caching and `public/_redirects` for SPA routing (`/admin` and deep routes).
+
+---
+
+## Tech Stack
+
+- **Framework:** React 19, TypeScript (~5.8), Vite 6
+- **Styling:** Tailwind CSS v4 (`@tailwindcss/vite`) with warm celestial light palette
+- **Animations:** `motion` (Framer Motion)
+- **Astronomy Engine:** `astronomy-engine` (Lahiri / Chitra Paksha sidereal calculations)
+- **Concurrency:** `comlink` Web Workers
+- **PDF & Export:** `html-to-image`, `html2canvas`, `jspdf`
+- **Icons:** `lucide-react` & Google Material Symbols Outlined
+- **PWA:** `vite-plugin-pwa`
+
+---
+
+## Project Structure
+
+```text
+├── public/
+│   └── _redirects                  # Netlify SPA fallback routing
+├── src/
+│   ├── components/
+│   │   ├── AdminPage.tsx           # Protected /admin Force Match & PDF console
+│   │   ├── CustomDatePicker.tsx    # Mobile-friendly portal date picker
+│   │   ├── CustomSelect.tsx        # Responsive native/desktop dropdown
+│   │   ├── CustomTimePicker.tsx    # Touch-friendly HH:MM selector
+│   │   ├── DailyHoroscopeModal.tsx # Nakshatra daily prediction & transit chart
+│   │   ├── DailyPanchangModal.tsx  # Kerala Udaya Nakshatra & Panchangam details
+│   │   ├── DasaTimeline.tsx        # Vimshottari Dasa cycle visualization
+│   │   ├── MuhurthamFinder.tsx     # Marriage Muhurtham list
+│   │   ├── PoruthamDetailModal.tsx # Detailed rule breakdown per Porutham
+│   │   ├── RasiChart.tsx           # South Indian 12-house Rasi grid
+│   │   └── *View.tsx               # 17 specialized Kerala astrology modules
+│   ├── contexts/
+│   │   └── LanguageContext.tsx     # English / Malayalam localization store
+│   ├── utils/
+│   │   ├── astroData.ts            # 27 Nakshatras, 12 Rasis, Pada-to-Rasi mapping
+│   │   ├── astronomy.ts            # Sidereal longitudes, Lagna, Kerala Panchangam
+│   │   ├── forceMatchEngine.ts     # Groom birth-time window optimizer
+│   │   ├── keralaMatchEngine.ts    # Dashakoota, Papasamyam, Chovva Dosham, Dasa Sandhi
+│   │   ├── keralaAstrologySuite.ts # Specialized Kerala Jyothisham calculators
+│   │   └── ...                     # Module-specific calculation engines
+│   ├── workers/
+│   │   └── astro.worker.ts         # Comlink Web Worker for non-blocking math
+│   ├── App.tsx                     # Main SPA shell, routing & matchmaking views
+│   └── index.css                   # Tailwind v4 theme tokens & light-mode enforcement
+└── vite.config.ts                  # Vite + PWA configuration
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js v18+
+- npm
+
+### Installation & Development
+```bash
+npm install
+npm run dev
+```
+The app runs on `http://localhost:3000`.
+
+### Type Checking & Production Build
+```bash
+npm run lint
+npm run build
+```
